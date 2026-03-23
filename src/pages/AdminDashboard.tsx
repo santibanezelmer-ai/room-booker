@@ -207,7 +207,6 @@ export default function AdminDashboard() {
               <div className="space-y-3">
                 {filteredReservations.map(r => {
                   const status = STATUS_MAP[r.status] || STATUS_MAP.pending;
-                  const profile = (r as any).profiles;
                   return (
                     <Card key={r.id} className="animate-fade-in">
                       <CardContent className="p-4">
