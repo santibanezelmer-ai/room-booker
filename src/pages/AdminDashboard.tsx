@@ -222,7 +222,7 @@ export default function AdminDashboard() {
                               {format(new Date(r.reservation_date + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })} — Bloque {r.block_start}{r.block_end > r.block_start ? ` a ${r.block_end}` : ""}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              Docente: {profile?.full_name || "—"} ({profile?.email || "—"})
+                              Docente: {getTeacherName(r.teacher_id)}
                             </div>
                             {r.observation && <p className="text-sm text-muted-foreground">Obs: {r.observation}</p>}
                             {r.admin_notes && <p className="text-sm text-destructive">Nota admin: {r.admin_notes}</p>}
