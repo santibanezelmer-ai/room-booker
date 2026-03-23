@@ -41,6 +41,13 @@ export default function AdminDashboard() {
   const { data: reservations, isLoading } = useReservations();
   const updateStatus = useUpdateReservationStatus();
 
+  // Profiles
+  const { data: profiles } = useProfiles();
+  const getTeacherName = (teacherId: string) => {
+    const p = profiles?.find(p => p.user_id === teacherId);
+    return p ? `${p.full_name} (${p.email})` : "—";
+  };
+
   // Materials
   const { data: materials } = useMaterials();
   const createMaterial = useCreateMaterial();
