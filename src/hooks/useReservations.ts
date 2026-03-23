@@ -8,7 +8,7 @@ export function useReservations(dateRange?: { from: string; to: string }) {
   return useQuery({
     queryKey: ["reservations", role, user?.id, dateRange],
     queryFn: async () => {
-      let query = supabase.from("reservations").select("*, profiles(full_name, email)");
+      let query = supabase.from("reservations").select("*");
       
       if (dateRange) {
         query = query.gte("reservation_date", dateRange.from).lte("reservation_date", dateRange.to);
