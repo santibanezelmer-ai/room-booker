@@ -31,8 +31,27 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
 };
 
 export default function AdminDashboard() {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { toast } = useToast();
+
+  // Change email
+  const [emailDialog, setEmailDialog] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailLoading(true);
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Correo actualizado", description: "Se ha enviado un enlace de confirmación a tu nuevo correo electrónico." });
+      setEmailDialog(false);
+      setNewEmail("");
+    }
+    setEmailLoading(false);
+  };
   const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -165,10 +184,13 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground">Panel de Administración</h1>
-              <p className="text-xs text-muted-foreground">Sala de Computación</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEmailDialog(true)}>
+              Cambiar Correo
+            </Button>
             <Button variant="outline" size="sm" onClick={openSettings}>
               <Settings className="h-4 w-4 mr-1" /> Configuración
             </Button>
@@ -354,6 +376,27 @@ export default function AdminDashboard() {
               <Label htmlFor="double">Permitir bloques dobles</Label>
             </div>
             <Button type="submit" className="w-full">Guardar</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email change dialog */}
+      <Dialog open={emailDialog} onOpenChange={setEmailDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Cambiar Correo Electrónico</DialogTitle></DialogHeader>
+          <form onSubmit={handleChangeEmail} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Correo actual</Label>
+              <Input value={user?.email || ""} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label>Nuevo correo electrónico</Label>
+              <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} required placeholder="nuevo@correo.cl" />
+            </div>
+            <p className="text-xs text-muted-foreground">Se enviará un enlace de confirmación a ambos correos.</p>
+            <Button type="submit" className="w-full" disabled={emailLoading}>
+              {emailLoading ? "Actualizando..." : "Actualizar Correo"}
+            </Button>
           </form>
         </DialogContent>
       </Dialog>

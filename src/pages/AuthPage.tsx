@@ -23,7 +23,11 @@ export default function AuthPage() {
     setLoading(true);
     const { error } = await signIn(loginEmail, loginPassword);
     if (error) {
-      toast({ title: "Error al iniciar sesión", description: error.message, variant: "destructive" });
+      if (error.message === "Email not confirmed") {
+        toast({ title: "Correo no verificado", description: "Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.", variant: "destructive" });
+      } else {
+        toast({ title: "Error al iniciar sesión", description: error.message, variant: "destructive" });
+      }
     }
     setLoading(false);
   };
@@ -35,7 +39,7 @@ export default function AuthPage() {
     if (error) {
       toast({ title: "Error al registrarse", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Registro exitoso", description: "Revisa tu correo para confirmar tu cuenta." });
+      toast({ title: "Registro exitoso", description: "Te hemos enviado un correo de verificación. Revisa tu bandeja de entrada (y spam) para confirmar tu cuenta antes de iniciar sesión." });
     }
     setLoading(false);
   };
