@@ -23,46 +23,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchRole = async (userId: string) => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .single();
-    setRole(data?.role ?? "teacher");
+    try {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      setRole(data?.role ?? "teacher");
+    } catch {
+      setRole("teacher");
+    }
   };
 
   useEffect(() => {
-    let initialSessionHandled = false;
+    let mounted = true;
+    let initializing = true;
+
+    const applySession = async (nextSession: Session | null) => {
+      if (!mounted) return;
+
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (!nextSession?.user) {
+        setRole(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await fetchRole(nextSession.user.id);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchRole(session.user.id);
-        } else {
-          setRole(null);
-        }
-        initialSessionHandled = true;
-        setLoading(false);
+      (_event, nextSession) => {
+        if (initializing && !nextSession) return;
+        void applySession(nextSession);
       }
     );
 
-    // Fallback: if onAuthStateChange hasn't fired after a short delay
-    const timeout = setTimeout(async () => {
-      if (!initialSessionHandled) {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchRole(session.user.id);
+    void (async () => {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        initializing = false;
+        await applySession(initialSession);
+      } catch {
+        initializing = false;
+        if (mounted) {
+          setRole(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
-    }, 500);
+    })();
 
     return () => {
-      clearTimeout(timeout);
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
