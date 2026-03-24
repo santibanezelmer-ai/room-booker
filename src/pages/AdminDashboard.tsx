@@ -184,10 +184,13 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground">Panel de Administración</h1>
-              <p className="text-xs text-muted-foreground">Sala de Computación</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEmailDialog(true)}>
+              Cambiar Correo
+            </Button>
             <Button variant="outline" size="sm" onClick={openSettings}>
               <Settings className="h-4 w-4 mr-1" /> Configuración
             </Button>
