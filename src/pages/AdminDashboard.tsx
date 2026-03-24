@@ -379,6 +379,27 @@ export default function AdminDashboard() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Email change dialog */}
+      <Dialog open={emailDialog} onOpenChange={setEmailDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Cambiar Correo Electrónico</DialogTitle></DialogHeader>
+          <form onSubmit={handleChangeEmail} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Correo actual</Label>
+              <Input value={user?.email || ""} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label>Nuevo correo electrónico</Label>
+              <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} required placeholder="nuevo@correo.cl" />
+            </div>
+            <p className="text-xs text-muted-foreground">Se enviará un enlace de confirmación a ambos correos.</p>
+            <Button type="submit" className="w-full" disabled={emailLoading}>
+              {emailLoading ? "Actualizando..." : "Actualizar Correo"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
