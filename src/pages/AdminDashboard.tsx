@@ -31,8 +31,27 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
 };
 
 export default function AdminDashboard() {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { toast } = useToast();
+
+  // Change email
+  const [emailDialog, setEmailDialog] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailLoading(true);
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Correo actualizado", description: "Se ha enviado un enlace de confirmación a tu nuevo correo electrónico." });
+      setEmailDialog(false);
+      setNewEmail("");
+    }
+    setEmailLoading(false);
+  };
   const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("all");
