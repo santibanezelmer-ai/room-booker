@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useReservations, useUpdateReservationStatus } from "@/hooks/useReservations";
 import { useMaterials, useCreateMaterial, useUpdateMaterial, useDeleteMaterial } from "@/hooks/useMaterials";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useScheduleSettings } from "@/hooks/useScheduleSettings";
+import { useEstablishmentSettings, useUpdateEstablishmentSettings } from "@/hooks/useEstablishmentSettings";
 import { supabase } from "@/integrations/supabase/client";
 import WeeklySchedule from "@/components/WeeklySchedule";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,8 @@ import { format, addWeeks, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   CalendarDays, ClipboardList, Package, Settings, LogOut, Monitor,
-  Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen
+  Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
+  Users, Upload, Image
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -33,6 +35,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
 export default function AdminDashboard() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Change email
   const [emailDialog, setEmailDialog] = useState(false);
@@ -52,7 +55,7 @@ export default function AdminDashboard() {
     }
     setEmailLoading(false);
   };
-  const queryClient = useQueryClient();
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -90,6 +93,35 @@ export default function AdminDashboard() {
   const [rejectDialog, setRejectDialog] = useState(false);
   const [rejectId, setRejectId] = useState("");
   const [rejectNotes, setRejectNotes] = useState("");
+
+  // Establishment settings & logo
+  const { data: estSettings } = useEstablishmentSettings();
+  const updateEstSettings = useUpdateEstablishmentSettings();
+  const [logoDialog, setLogoDialog] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Delete user
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("delete-user", {
+        body: { user_id: userId },
+      });
+      if (res.error) throw new Error(res.error.message || "Error al eliminar usuario");
+      if (res.data?.error) throw new Error(res.data.error);
+    },
+    onSuccess: () => {
+      toast({ title: "Usuario eliminado" });
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      setDeletingUserId(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
 
   const filteredReservations = reservations?.filter(
     r => statusFilter === "all" || r.status === statusFilter
@@ -171,6 +203,31 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `logo.${ext}`;
+      
+      // Remove old logo if exists
+      await supabase.storage.from("logos").remove([filePath]);
+      
+      const { error: uploadError } = await supabase.storage.from("logos").upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("logos").getPublicUrl(filePath);
+      await updateEstSettings.mutateAsync({ logo_url: urlData.publicUrl + `?t=${Date.now()}` });
+      toast({ title: "Logo actualizado" });
+      setLogoDialog(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
 
@@ -179,15 +236,22 @@ export default function AdminDashboard() {
       <header className="border-b border-border bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Monitor className="h-5 w-5 text-primary-foreground" />
-            </div>
+            {estSettings?.logo_url ? (
+              <img src={estSettings.logo_url} alt="Logo" className="h-9 w-9 rounded-lg object-cover" />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                <Monitor className="h-5 w-5 text-primary-foreground" />
+              </div>
+            )}
             <div>
               <h1 className="text-lg font-bold text-foreground">Panel de Administración</h1>
               <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => setLogoDialog(true)}>
+              <Image className="h-4 w-4 mr-1" /> Logo
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setEmailDialog(true)}>
               Cambiar Correo
             </Button>
@@ -205,6 +269,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="requests"><ClipboardList className="h-4 w-4 mr-1.5" />Solicitudes</TabsTrigger>
             <TabsTrigger value="schedule"><CalendarDays className="h-4 w-4 mr-1.5" />Calendario</TabsTrigger>
             <TabsTrigger value="materials"><Package className="h-4 w-4 mr-1.5" />Materiales</TabsTrigger>
+            <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Usuarios</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
@@ -313,6 +378,43 @@ export default function AdminDashboard() {
               </div>
             )}
           </TabsContent>
+
+          {/* Users tab */}
+          <TabsContent value="users" className="space-y-4">
+            {!profiles?.length ? (
+              <Card><CardContent className="py-12 text-center text-muted-foreground">No hay usuarios registrados.</CardContent></Card>
+            ) : (
+              <div className="space-y-3">
+                {profiles.map(p => (
+                  <Card key={p.id} className="animate-fade-in">
+                    <CardContent className="p-4 flex items-center justify-between gap-3">
+                      <div className="flex-1 space-y-0.5">
+                        <div className="font-medium text-foreground">{p.full_name || "Sin nombre"}</div>
+                        <div className="text-sm text-muted-foreground">{p.email}</div>
+                        <div className="text-xs text-muted-foreground">Registrado: {format(new Date(p.created_at), "d MMM yyyy", { locale: es })}</div>
+                      </div>
+                      {p.user_id !== user?.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          disabled={deleteUser.isPending && deletingUserId === p.user_id}
+                          onClick={() => {
+                            if (confirm(`¿Estás seguro de eliminar a ${p.full_name || p.email}? Esta acción no se puede deshacer.`)) {
+                              setDeletingUserId(p.user_id);
+                              deleteUser.mutate(p.user_id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -398,6 +500,31 @@ export default function AdminDashboard() {
               {emailLoading ? "Actualizando..." : "Actualizar Correo"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Logo upload dialog */}
+      <Dialog open={logoDialog} onOpenChange={setLogoDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Logo del Establecimiento</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {estSettings?.logo_url && (
+              <div className="flex justify-center">
+                <img src={estSettings.logo_url} alt="Logo actual" className="h-24 w-24 rounded-lg object-cover border border-border" />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Subir nuevo logo</Label>
+              <Input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                disabled={uploadingLogo}
+              />
+            </div>
+            {uploadingLogo && <p className="text-sm text-muted-foreground">Subiendo...</p>}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
