@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEstablishmentSettings } from "@/hooks/useEstablishmentSettings";
 import WeeklySchedule from "@/components/WeeklySchedule";
 import ReservationForm from "@/components/ReservationForm";
 import MyReservations from "@/components/MyReservations";
@@ -11,6 +12,7 @@ import { es } from "date-fns/locale";
 
 export default function TeacherDashboard() {
   const { user, signOut } = useAuth();
+  const { data: estSettings } = useEstablishmentSettings();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [formOpen, setFormOpen] = useState(false);
   const [preDate, setPreDate] = useState<string>();
@@ -30,11 +32,15 @@ export default function TeacherDashboard() {
       <header className="border-b border-border bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Monitor className="h-5 w-5 text-primary-foreground" />
-            </div>
+            {estSettings?.logo_url ? (
+              <img src={estSettings.logo_url} alt="Logo" className="h-9 w-9 rounded-lg object-cover" />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                <Monitor className="h-5 w-5 text-primary-foreground" />
+              </div>
+            )}
             <div>
-              <h1 className="text-lg font-bold text-foreground">Sala de Computación</h1>
+              <h1 className="text-lg font-bold text-foreground">{estSettings?.name || "Sala de Computación"}</h1>
               <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
           </div>
