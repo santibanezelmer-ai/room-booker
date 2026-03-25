@@ -3,6 +3,7 @@ import { format, startOfWeek, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { useScheduleSettings, generateBlocks } from "@/hooks/useScheduleSettings";
 import { useReservations } from "@/hooks/useReservations";
+import { useProfiles } from "@/hooks/useProfiles";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -12,6 +13,12 @@ const STATUS_STYLES: Record<string, string> = {
   rejected: "bg-status-rejected text-status-rejected-foreground",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  approved: "Aprobado",
+  pending: "Pendiente",
+  rejected: "Rechazado",
+};
+
 interface WeeklyScheduleProps {
   currentDate: Date;
   onSlotClick?: (date: string, blockNumber: number) => void;
@@ -19,6 +26,7 @@ interface WeeklyScheduleProps {
 
 export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklyScheduleProps) {
   const { data: settings, isLoading: loadingSettings } = useScheduleSettings();
+  const { data: profiles } = useProfiles();
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 5 }, (_, i) => addDays(weekStart, i));
@@ -31,6 +39,11 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
   const { data: reservations, isLoading: loadingRes } = useReservations(dateRange);
 
   const blocks = useMemo(() => (settings ? generateBlocks(settings) : []), [settings]);
+
+  const getTeacherName = (teacherId: string) => {
+    const p = profiles?.find(pr => pr.user_id === teacherId);
+    return p?.full_name || "";
+  };
 
   const getReservation = (date: string, blockNum: number) => {
     return reservations?.find(
@@ -78,11 +91,14 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
                     {loadingRes ? (
                       <Skeleton className="h-6 w-full" />
                     ) : reservation ? (
-                      <div className="space-y-1">
+                      <div className="space-y-0.5">
                         <Badge className={`text-xs ${STATUS_STYLES[reservation.status]}`}>
-                          {reservation.status === "approved" ? "Aprobado" : reservation.status === "pending" ? "Pendiente" : "Rechazado"}
+                          {STATUS_LABELS[reservation.status] || reservation.status}
                         </Badge>
                         <div className="text-xs text-foreground font-medium truncate">{reservation.course_name}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">
+                          {getTeacherName(reservation.teacher_id)}
+                        </div>
                       </div>
                     ) : (
                       <span className="text-xs text-status-available font-medium">Disponible</span>
