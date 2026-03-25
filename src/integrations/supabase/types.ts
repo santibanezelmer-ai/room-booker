@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      establishment_settings: {
+        Row: {
+          id: string
+          logo_url: string | null
+          name: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          logo_url?: string | null
+          name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          logo_url?: string | null
+          name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       material_reservations: {
         Row: {
           admin_notes: string | null
