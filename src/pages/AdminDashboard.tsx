@@ -22,7 +22,7 @@ import { es } from "date-fns/locale";
 import {
   CalendarDays, ClipboardList, Package, Settings, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
-  Users, Upload, Image
+  Users, Upload, Image, KeyRound
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
