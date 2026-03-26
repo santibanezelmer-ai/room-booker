@@ -22,7 +22,7 @@ import { es } from "date-fns/locale";
 import {
   CalendarDays, ClipboardList, Package, Settings, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
-  Users, Upload, Image
+  Users, Upload, Image, KeyRound
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -41,6 +41,35 @@ export default function AdminDashboard() {
   const [emailDialog, setEmailDialog] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
+
+  // Change password
+  const [passwordDialog, setPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Error", description: "Las contraseñas no coinciden.", variant: "destructive" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({ title: "Error", description: "La contraseña debe tener al menos 6 caracteres.", variant: "destructive" });
+      return;
+    }
+    setPasswordLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Contraseña actualizada", description: "Tu contraseña ha sido cambiada exitosamente." });
+      setPasswordDialog(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setPasswordLoading(false);
+  };
 
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,6 +283,9 @@ export default function AdminDashboard() {
             </Button>
             <Button variant="outline" size="sm" onClick={() => setEmailDialog(true)}>
               Cambiar Correo
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPasswordDialog(true)}>
+              <KeyRound className="h-4 w-4 mr-1" /> Cambiar Clave
             </Button>
             <Button variant="outline" size="sm" onClick={openSettings}>
               <Settings className="h-4 w-4 mr-1" /> Configuración
@@ -498,6 +530,26 @@ export default function AdminDashboard() {
             <p className="text-xs text-muted-foreground">Se enviará un enlace de confirmación a ambos correos.</p>
             <Button type="submit" className="w-full" disabled={emailLoading}>
               {emailLoading ? "Actualizando..." : "Actualizar Correo"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password change dialog */}
+      <Dialog open={passwordDialog} onOpenChange={setPasswordDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Cambiar Contraseña</DialogTitle></DialogHeader>
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nueva contraseña</Label>
+              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirmar contraseña</Label>
+              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={6} placeholder="Repite la contraseña" />
+            </div>
+            <Button type="submit" className="w-full" disabled={passwordLoading}>
+              {passwordLoading ? "Actualizando..." : "Cambiar Contraseña"}
             </Button>
           </form>
         </DialogContent>

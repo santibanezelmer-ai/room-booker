@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,8 @@ export default function AuthPage() {
   const [regPassword, setRegPassword] = useState("");
   const [regName, setRegName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +47,21 @@ export default function AuthPage() {
     setLoading(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Correo enviado", description: "Revisa tu bandeja de entrada para restablecer tu contraseña." });
+      setForgotMode(false);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md animate-fade-in">
@@ -55,46 +73,68 @@ export default function AuthPage() {
           <CardDescription>Sistema de reservas y gestión de recursos</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-              <TabsTrigger value="register">Registrarse</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4 pt-4">
+          {forgotMode ? (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">Recuperar Contraseña</h3>
+              <p className="text-sm text-muted-foreground">Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.</p>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Correo electrónico</Label>
-                  <Input id="login-email" type="email" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="docente@colegio.cl" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Contraseña</Label>
-                  <Input id="login-password" type="password" required value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
+                  <Label htmlFor="forgot-email">Correo electrónico</Label>
+                  <Input id="forgot-email" type="email" required value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="docente@colegio.cl" />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Ingresando..." : "Ingresar"}
+                  {loading ? "Enviando..." : "Enviar enlace de recuperación"}
                 </Button>
               </form>
-            </TabsContent>
-            <TabsContent value="register">
-              <form onSubmit={handleRegister} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reg-name">Nombre completo</Label>
-                  <Input id="reg-name" type="text" required value={regName} onChange={e => setRegName(e.target.value)} placeholder="María González" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-email">Correo electrónico</Label>
-                  <Input id="reg-email" type="email" required value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="docente@colegio.cl" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-password">Contraseña</Label>
-                  <Input id="reg-password" type="password" required minLength={6} value={regPassword} onChange={e => setRegPassword(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Registrando..." : "Crear cuenta"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+              <Button variant="link" className="w-full" onClick={() => setForgotMode(false)}>
+                Volver al inicio de sesión
+              </Button>
+            </div>
+          ) : (
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
+                <TabsTrigger value="register">Registrarse</TabsTrigger>
+              </TabsList>
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Correo electrónico</Label>
+                    <Input id="login-email" type="email" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="docente@colegio.cl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Contraseña</Label>
+                    <Input id="login-password" type="password" required value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Ingresando..." : "Ingresar"}
+                  </Button>
+                  <Button type="button" variant="link" className="w-full text-sm" onClick={() => setForgotMode(true)}>
+                    ¿Olvidaste tu contraseña?
+                  </Button>
+                </form>
+              </TabsContent>
+              <TabsContent value="register">
+                <form onSubmit={handleRegister} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-name">Nombre completo</Label>
+                    <Input id="reg-name" type="text" required value={regName} onChange={e => setRegName(e.target.value)} placeholder="María González" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-email">Correo electrónico</Label>
+                    <Input id="reg-email" type="email" required value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="docente@colegio.cl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-password">Contraseña</Label>
+                    <Input id="reg-password" type="password" required minLength={6} value={regPassword} onChange={e => setRegPassword(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Registrando..." : "Crear cuenta"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          )}
         </CardContent>
       </Card>
     </div>
