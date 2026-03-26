@@ -125,6 +125,26 @@ export default function TeacherDashboard() {
         preselectedDate={preDate}
         preselectedBlock={preBlock}
       />
+
+      {/* Password change dialog */}
+      <Dialog open={passwordDialog} onOpenChange={setPasswordDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Cambiar Contraseña</DialogTitle></DialogHeader>
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nueva contraseña</Label>
+              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirmar contraseña</Label>
+              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={6} placeholder="Repite la contraseña" />
+            </div>
+            <Button type="submit" className="w-full" disabled={passwordLoading}>
+              {passwordLoading ? "Actualizando..." : "Cambiar Contraseña"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
