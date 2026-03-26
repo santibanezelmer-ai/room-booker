@@ -83,6 +83,9 @@ export default function TeacherDashboard() {
             <Button size="sm" onClick={() => { setPreDate(undefined); setPreBlock(undefined); setFormOpen(true); }}>
               <Plus className="h-4 w-4 mr-1" /> Nueva Reserva
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setPasswordDialog(true)}>
+              <KeyRound className="h-4 w-4 mr-1" /> Cambiar Clave
+            </Button>
             <Button variant="ghost" size="icon" onClick={signOut}><LogOut className="h-4 w-4" /></Button>
           </div>
         </div>
