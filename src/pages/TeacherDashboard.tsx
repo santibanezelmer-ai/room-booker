@@ -1,14 +1,19 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEstablishmentSettings } from "@/hooks/useEstablishmentSettings";
+import { supabase } from "@/integrations/supabase/client";
 import WeeklySchedule from "@/components/WeeklySchedule";
 import ReservationForm from "@/components/ReservationForm";
 import MyReservations from "@/components/MyReservations";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarDays, Plus, ClipboardList, LogOut, ChevronLeft, ChevronRight, Monitor } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CalendarDays, Plus, ClipboardList, LogOut, ChevronLeft, ChevronRight, Monitor, KeyRound } from "lucide-react";
 import { addWeeks, subWeeks, format, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 
 export default function TeacherDashboard() {
   const { user, signOut } = useAuth();
