@@ -284,6 +284,9 @@ export default function AdminDashboard() {
             <Button variant="outline" size="sm" onClick={() => setEmailDialog(true)}>
               Cambiar Correo
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setPasswordDialog(true)}>
+              <KeyRound className="h-4 w-4 mr-1" /> Cambiar Clave
+            </Button>
             <Button variant="outline" size="sm" onClick={openSettings}>
               <Settings className="h-4 w-4 mr-1" /> Configuración
             </Button>
