@@ -6,84 +6,84 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    --background: 220 16% 96%;
+    --foreground: 220 20% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 220 20% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 220 20% 12%;
 
-    --primary: 215 70% 35%;
+    --primary: 220 72% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 30% 93%;
-    --secondary-foreground: 215 25% 15%;
+    --secondary: 220 20% 92%;
+    --secondary-foreground: 220 20% 12%;
 
-    --muted: 210 20% 95%;
-    --muted-foreground: 215 15% 50%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 210 30% 90%;
-    --accent-foreground: 215 25% 15%;
+    --accent: 220 20% 89%;
+    --accent-foreground: 220 20% 12%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
-    --ring: 215 70% 35%;
+    --border: 220 14% 89%;
+    --input: 220 14% 86%;
+    --ring: 220 72% 42%;
 
-    --radius: 0.625rem;
+    --radius: 0.75rem;
 
     /* Status colors */
-    --status-available: 152 60% 42%;
+    --status-available: 152 55% 40%;
     --status-available-foreground: 0 0% 100%;
-    --status-pending: 38 92% 50%;
-    --status-pending-foreground: 0 0% 100%;
-    --status-approved: 215 70% 50%;
+    --status-pending: 38 90% 48%;
+    --status-pending-foreground: 38 90% 10%;
+    --status-approved: 152 55% 40%;
     --status-approved-foreground: 0 0% 100%;
     --status-rejected: 0 72% 51%;
     --status-rejected-foreground: 0 0% 100%;
 
-    --sidebar-background: 215 25% 15%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 215 70% 50%;
+    --sidebar-background: 220 20% 12%;
+    --sidebar-foreground: 220 14% 90%;
+    --sidebar-primary: 220 72% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 22%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 215 20% 25%;
-    --sidebar-ring: 215 70% 50%;
+    --sidebar-accent: 220 20% 18%;
+    --sidebar-accent-foreground: 220 14% 90%;
+    --sidebar-border: 220 16% 20%;
+    --sidebar-ring: 220 72% 50%;
   }
 
   .dark {
-    --background: 215 25% 10%;
-    --foreground: 210 20% 95%;
-    --card: 215 25% 13%;
-    --card-foreground: 210 20% 95%;
-    --popover: 215 25% 13%;
-    --popover-foreground: 210 20% 95%;
-    --primary: 215 70% 50%;
+    --background: 220 20% 8%;
+    --foreground: 220 14% 94%;
+    --card: 220 20% 11%;
+    --card-foreground: 220 14% 94%;
+    --popover: 220 20% 11%;
+    --popover-foreground: 220 14% 94%;
+    --primary: 220 72% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 215 20% 20%;
-    --secondary-foreground: 210 20% 95%;
-    --muted: 215 20% 18%;
-    --muted-foreground: 215 15% 60%;
-    --accent: 215 20% 20%;
-    --accent-foreground: 210 20% 95%;
+    --secondary: 220 16% 18%;
+    --secondary-foreground: 220 14% 94%;
+    --muted: 220 16% 16%;
+    --muted-foreground: 220 10% 56%;
+    --accent: 220 16% 18%;
+    --accent-foreground: 220 14% 94%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 215 20% 22%;
-    --input: 215 20% 22%;
-    --ring: 215 70% 50%;
-    --sidebar-background: 215 25% 8%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 215 70% 50%;
+    --destructive-foreground: 220 14% 98%;
+    --border: 220 16% 18%;
+    --input: 220 16% 18%;
+    --ring: 220 72% 55%;
+    --sidebar-background: 220 20% 6%;
+    --sidebar-foreground: 220 14% 90%;
+    --sidebar-primary: 220 72% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 15%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 215 20% 15%;
-    --sidebar-ring: 215 70% 50%;
+    --sidebar-accent: 220 20% 12%;
+    --sidebar-accent-foreground: 220 14% 90%;
+    --sidebar-border: 220 16% 12%;
+    --sidebar-ring: 220 72% 55%;
   }
 }
 
@@ -94,5 +94,11 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/60 shadow-sm;
   }
 }

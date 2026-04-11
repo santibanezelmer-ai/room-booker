@@ -6,6 +6,7 @@ import { useReservations } from "@/hooks/useReservations";
 import { useProfiles } from "@/hooks/useProfiles";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const STATUS_STYLES: Record<string, string> = {
   approved: "bg-status-approved text-status-approved-foreground",
@@ -51,30 +52,39 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
     );
   };
 
-  if (loadingSettings) return <Skeleton className="h-96 w-full rounded-lg" />;
+  const isToday = (day: Date) => format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+
+  if (loadingSettings) return <Skeleton className="h-96 w-full rounded-xl" />;
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th className="border border-border bg-muted px-3 py-2 text-left font-medium text-muted-foreground w-24">
+            <th className="border-b border-r border-border bg-muted/70 px-3 py-3 text-left font-semibold text-muted-foreground w-28">
               Bloque
             </th>
             {weekDays.map((day) => (
-              <th key={day.toISOString()} className="border border-border bg-muted px-3 py-2 text-center font-medium text-muted-foreground min-w-[120px]">
-                <div className="text-xs uppercase">{format(day, "EEE", { locale: es })}</div>
-                <div className="text-foreground">{format(day, "d MMM", { locale: es })}</div>
+              <th
+                key={day.toISOString()}
+                className={`border-b border-r last:border-r-0 border-border px-3 py-3 text-center font-semibold min-w-[130px] ${
+                  isToday(day) ? "bg-primary/8 text-primary" : "bg-muted/70 text-muted-foreground"
+                }`}
+              >
+                <div className="text-[11px] uppercase tracking-wider">{format(day, "EEE", { locale: es })}</div>
+                <div className={`text-sm mt-0.5 ${isToday(day) ? "text-primary font-bold" : "text-foreground"}`}>
+                  {format(day, "d MMM", { locale: es })}
+                </div>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {blocks.map((block) => (
-            <tr key={block.number}>
-              <td className="border border-border px-3 py-2 bg-muted/50">
-                <div className="font-medium text-foreground">Bloque {block.number}</div>
-                <div className="text-xs text-muted-foreground">{block.startTime} - {block.endTime}</div>
+          {blocks.map((block, idx) => (
+            <tr key={block.number} className={idx % 2 === 0 ? "" : "bg-muted/20"}>
+              <td className="border-b border-r border-border px-3 py-2.5 bg-muted/30">
+                <div className="font-semibold text-foreground text-xs">Bloque {block.number}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{block.startTime} - {block.endTime}</div>
               </td>
               {weekDays.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -83,25 +93,38 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
                 return (
                   <td
                     key={dateStr}
-                    className={`border border-border px-2 py-2 text-center transition-colors ${
-                      !reservation ? "bg-card hover:bg-accent cursor-pointer" : ""
-                    }`}
+                    className={`border-b border-r last:border-r-0 border-border px-2 py-2 text-center transition-all duration-150 ${
+                      !reservation
+                        ? "hover:bg-primary/5 cursor-pointer group"
+                        : ""
+                    } ${isToday(day) ? "bg-primary/[0.03]" : ""}`}
                     onClick={() => !reservation && onSlotClick?.(dateStr, block.number)}
                   >
                     {loadingRes ? (
-                      <Skeleton className="h-6 w-full" />
+                      <Skeleton className="h-8 w-full rounded-md" />
                     ) : reservation ? (
-                      <div className="space-y-0.5">
-                        <Badge className={`text-xs ${STATUS_STYLES[reservation.status]}`}>
-                          {STATUS_LABELS[reservation.status] || reservation.status}
-                        </Badge>
-                        <div className="text-xs text-foreground font-medium truncate">{reservation.course_name}</div>
-                        <div className="text-[10px] text-muted-foreground truncate">
-                          {getTeacherName(reservation.teacher_id)}
-                        </div>
-                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="space-y-1 px-1">
+                            <Badge className={`text-[10px] px-1.5 py-0 leading-5 font-medium ${STATUS_STYLES[reservation.status]}`}>
+                              {STATUS_LABELS[reservation.status] || reservation.status}
+                            </Badge>
+                            <div className="text-xs text-foreground font-medium truncate leading-tight">{reservation.course_name}</div>
+                            <div className="text-[10px] text-muted-foreground truncate leading-tight">
+                              {getTeacherName(reservation.teacher_id)}
+                            </div>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[220px]">
+                          <p className="font-semibold">{reservation.course_name}</p>
+                          <p className="text-xs">{getTeacherName(reservation.teacher_id)}</p>
+                          {reservation.observation && <p className="text-xs mt-1 text-muted-foreground">{reservation.observation}</p>}
+                        </TooltipContent>
+                      </Tooltip>
                     ) : (
-                      <span className="text-xs text-status-available font-medium">Disponible</span>
+                      <span className="text-[11px] text-status-available/70 group-hover:text-status-available font-medium transition-colors">
+                        Disponible
+                      </span>
                     )}
                   </td>
                 );
