@@ -288,42 +288,47 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-sm">
         <div className="container mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             {estSettings?.logo_url ? (
-              <img src={estSettings.logo_url} alt="Logo" className="h-9 w-9 rounded-lg object-cover" />
+              <img src={estSettings.logo_url} alt="Logo" className="h-9 w-9 rounded-xl object-cover shadow-sm ring-1 ring-border/50" />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-sm">
                 <Monitor className="h-5 w-5 text-primary-foreground" />
               </div>
             )}
             <div>
-              <h1 className="text-lg font-bold text-foreground">{estSettings?.name || "Panel de Administración"}</h1>
+              <h1 className="text-base font-bold text-foreground leading-tight">{estSettings?.name || "Panel de Administración"}</h1>
               <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={openEstDialog}>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button variant="outline" size="sm" onClick={openEstDialog} className="hidden sm:flex">
               <Building2 className="h-4 w-4 mr-1" /> Establecimiento
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setEmailDialog(true)}>
-              Cambiar Correo
+            <Button variant="outline" size="icon" className="h-9 w-9 sm:hidden" onClick={openEstDialog} title="Establecimiento">
+              <Building2 className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setPasswordDialog(true)}>
-              <KeyRound className="h-4 w-4 mr-1" /> Cambiar Clave
+            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setEmailDialog(true)} title="Cambiar correo">
+              <Mail className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={openSettings}>
-              <Settings className="h-4 w-4 mr-1" /> Configuración
+            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setPasswordDialog(true)} title="Cambiar clave">
+              <KeyRound className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={signOut}><LogOut className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" className="h-9 w-9" onClick={openSettings} title="Configuración">
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={signOut} title="Cerrar sesión">
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
         <Tabs defaultValue="requests" className="w-full">
-          <TabsList className="flex-wrap">
+          <TabsList className="flex-wrap bg-card border border-border shadow-sm">
             <TabsTrigger value="requests"><ClipboardList className="h-4 w-4 mr-1.5" />Solicitudes</TabsTrigger>
             <TabsTrigger value="history"><History className="h-4 w-4 mr-1.5" />Historial</TabsTrigger>
             <TabsTrigger value="schedule"><CalendarDays className="h-4 w-4 mr-1.5" />Calendario</TabsTrigger>
