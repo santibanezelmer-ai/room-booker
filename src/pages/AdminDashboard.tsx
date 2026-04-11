@@ -467,15 +467,15 @@ export default function AdminDashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="schedule" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Button variant="outline" size="sm" onClick={() => setCurrentDate(subWeeks(currentDate, 1))}>
+          <TabsContent value="schedule" className="space-y-4 mt-4">
+            <div className="flex items-center justify-between bg-card rounded-xl border border-border px-4 py-2.5 shadow-sm">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(subWeeks(currentDate, 1))}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-semibold text-foreground">
                 {format(weekStart, "d MMM", { locale: es })} — {format(weekEnd, "d MMM yyyy", { locale: es })}
               </span>
-              <Button variant="outline" size="sm" onClick={() => setCurrentDate(addWeeks(currentDate, 1))}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(addWeeks(currentDate, 1))}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
