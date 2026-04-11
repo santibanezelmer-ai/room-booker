@@ -22,7 +22,7 @@ import { es } from "date-fns/locale";
 import {
   CalendarDays, ClipboardList, Package, Settings, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
-  Users, Upload, Image, KeyRound
+  Users, Image, KeyRound, History, Building2
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -88,6 +88,11 @@ export default function AdminDashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  // History filters
+  const [historyDateFrom, setHistoryDateFrom] = useState("");
+  const [historyDateTo, setHistoryDateTo] = useState("");
+  const [historyStatus, setHistoryStatus] = useState<string>("all");
+
   // Reservations
   const { data: reservations, isLoading } = useReservations();
   const updateStatus = useUpdateReservationStatus();
@@ -126,7 +131,8 @@ export default function AdminDashboard() {
   // Establishment settings & logo
   const { data: estSettings } = useEstablishmentSettings();
   const updateEstSettings = useUpdateEstablishmentSettings();
-  const [logoDialog, setLogoDialog] = useState(false);
+  const [estDialog, setEstDialog] = useState(false);
+  const [estName, setEstName] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -135,7 +141,6 @@ export default function AdminDashboard() {
 
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("delete-user", {
         body: { user_id: userId },
       });
@@ -155,6 +160,16 @@ export default function AdminDashboard() {
   const filteredReservations = reservations?.filter(
     r => statusFilter === "all" || r.status === statusFilter
   );
+
+  // History: past reservations with date + status filters
+  const historyReservations = reservations
+    ?.filter(r => {
+      if (historyStatus !== "all" && r.status !== historyStatus) return false;
+      if (historyDateFrom && r.reservation_date < historyDateFrom) return false;
+      if (historyDateTo && r.reservation_date > historyDateTo) return false;
+      return true;
+    })
+    ?.sort((a, b) => b.reservation_date.localeCompare(a.reservation_date));
 
   const handleApprove = async (id: string) => {
     try {
@@ -239,21 +254,32 @@ export default function AdminDashboard() {
     try {
       const ext = file.name.split('.').pop();
       const filePath = `logo.${ext}`;
-      
-      // Remove old logo if exists
       await supabase.storage.from("logos").remove([filePath]);
-      
       const { error: uploadError } = await supabase.storage.from("logos").upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-
       const { data: urlData } = supabase.storage.from("logos").getPublicUrl(filePath);
       await updateEstSettings.mutateAsync({ logo_url: urlData.publicUrl + `?t=${Date.now()}` });
       toast({ title: "Logo actualizado" });
-      setLogoDialog(false);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setUploadingLogo(false);
+    }
+  };
+
+  const openEstDialog = () => {
+    setEstName(estSettings?.name || "Sala de Computación");
+    setEstDialog(true);
+  };
+
+  const saveEstSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateEstSettings.mutateAsync({ name: estName });
+      toast({ title: "Datos del establecimiento actualizados" });
+      setEstDialog(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
@@ -273,13 +299,13 @@ export default function AdminDashboard() {
               </div>
             )}
             <div>
-              <h1 className="text-lg font-bold text-foreground">Panel de Administración</h1>
+              <h1 className="text-lg font-bold text-foreground">{estSettings?.name || "Panel de Administración"}</h1>
               <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => setLogoDialog(true)}>
-              <Image className="h-4 w-4 mr-1" /> Logo
+            <Button variant="outline" size="sm" onClick={openEstDialog}>
+              <Building2 className="h-4 w-4 mr-1" /> Establecimiento
             </Button>
             <Button variant="outline" size="sm" onClick={() => setEmailDialog(true)}>
               Cambiar Correo
@@ -297,8 +323,9 @@ export default function AdminDashboard() {
 
       <main className="container mx-auto px-4 py-6 space-y-6">
         <Tabs defaultValue="requests" className="w-full">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="requests"><ClipboardList className="h-4 w-4 mr-1.5" />Solicitudes</TabsTrigger>
+            <TabsTrigger value="history"><History className="h-4 w-4 mr-1.5" />Historial</TabsTrigger>
             <TabsTrigger value="schedule"><CalendarDays className="h-4 w-4 mr-1.5" />Calendario</TabsTrigger>
             <TabsTrigger value="materials"><Package className="h-4 w-4 mr-1.5" />Materiales</TabsTrigger>
             <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Usuarios</TabsTrigger>
@@ -356,6 +383,76 @@ export default function AdminDashboard() {
                               </Button>
                             </div>
                           )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* History tab */}
+          <TabsContent value="history" className="space-y-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Desde</Label>
+                    <Input type="date" value={historyDateFrom} onChange={e => setHistoryDateFrom(e.target.value)} className="w-40" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Hasta</Label>
+                    <Input type="date" value={historyDateTo} onChange={e => setHistoryDateTo(e.target.value)} className="w-40" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Estado</Label>
+                    <Select value={historyStatus} onValueChange={setHistoryStatus}>
+                      <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="pending">Pendientes</SelectItem>
+                        <SelectItem value="approved">Aprobadas</SelectItem>
+                        <SelectItem value="rejected">Rechazadas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => { setHistoryDateFrom(""); setHistoryDateTo(""); setHistoryStatus("all"); }}>
+                    Limpiar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {isLoading ? (
+              <p className="text-muted-foreground">Cargando...</p>
+            ) : !historyReservations?.length ? (
+              <Card><CardContent className="py-12 text-center text-muted-foreground">No hay reservas en el rango seleccionado.</CardContent></Card>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">{historyReservations.length} reserva(s) encontrada(s)</p>
+                {historyReservations.map(r => {
+                  const status = STATUS_MAP[r.status] || STATUS_MAP.pending;
+                  return (
+                    <Card key={r.id} className="animate-fade-in">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="h-4 w-4 text-primary" />
+                              <span className="font-semibold text-foreground">{r.course_name}</span>
+                              <Badge className={status.className}>{status.label}</Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              <Clock className="h-3.5 w-3.5 inline mr-1" />
+                              {format(new Date(r.reservation_date + "T12:00:00"), "EEEE d 'de' MMMM yyyy", { locale: es })} — Bloque {r.block_start}{r.block_end > r.block_start ? ` a ${r.block_end}` : ""}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Docente: {getTeacherName(r.teacher_id)}
+                            </div>
+                            {r.observation && <p className="text-sm text-muted-foreground">Obs: {r.observation}</p>}
+                            {r.admin_notes && <p className="text-sm text-destructive">Nota: {r.admin_notes}</p>}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -555,18 +652,22 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Logo upload dialog */}
-      <Dialog open={logoDialog} onOpenChange={setLogoDialog}>
+      {/* Establishment settings dialog */}
+      <Dialog open={estDialog} onOpenChange={setEstDialog}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Logo del Establecimiento</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            {estSettings?.logo_url && (
-              <div className="flex justify-center">
-                <img src={estSettings.logo_url} alt="Logo actual" className="h-24 w-24 rounded-lg object-cover border border-border" />
-              </div>
-            )}
+          <DialogHeader><DialogTitle>Datos del Establecimiento</DialogTitle></DialogHeader>
+          <form onSubmit={saveEstSettings} className="space-y-4">
             <div className="space-y-2">
-              <Label>Subir nuevo logo</Label>
+              <Label>Nombre del establecimiento</Label>
+              <Input value={estName} onChange={e => setEstName(e.target.value)} required placeholder="Ej: Escuela Básica N° 1" />
+            </div>
+            <div className="space-y-2">
+              <Label>Logo</Label>
+              {estSettings?.logo_url && (
+                <div className="flex justify-center mb-2">
+                  <img src={estSettings.logo_url} alt="Logo actual" className="h-20 w-20 rounded-lg object-cover border border-border" />
+                </div>
+              )}
               <Input
                 ref={logoInputRef}
                 type="file"
@@ -574,9 +675,10 @@ export default function AdminDashboard() {
                 onChange={handleLogoUpload}
                 disabled={uploadingLogo}
               />
+              {uploadingLogo && <p className="text-sm text-muted-foreground">Subiendo...</p>}
             </div>
-            {uploadingLogo && <p className="text-sm text-muted-foreground">Subiendo...</p>}
-          </div>
+            <Button type="submit" className="w-full">Guardar</Button>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
