@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format, addWeeks, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import {
-  CalendarDays, ClipboardList, Package, Settings, LogOut, Monitor,
+  CalendarDays, ClipboardList, Package, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
   Users, Image, KeyRound, History, Building2, Mail
 } from "lucide-react";
