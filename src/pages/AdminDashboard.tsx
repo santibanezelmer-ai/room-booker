@@ -22,8 +22,9 @@ import { es } from "date-fns/locale";
 import {
   CalendarDays, ClipboardList, Package, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
-  Users, Image, KeyRound, History, Building2, Mail
+  Users, Image, KeyRound, History, Building2, Mail, LayoutGrid
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -117,6 +118,77 @@ export default function AdminDashboard() {
 
   // Schedule blocks
   const { data: scheduleBlocks } = useScheduleBlocks();
+  const [blockDialog, setBlockDialog] = useState(false);
+  const [editBlock, setEditBlock] = useState<any>(null);
+  const [blockNum, setBlockNum] = useState("");
+  const [blockStart, setBlockStart] = useState("");
+  const [blockEnd, setBlockEnd] = useState("");
+  const [blockDays, setBlockDays] = useState<number[]>([1, 2, 3, 4, 5]);
+
+  const DAY_LABELS = [
+    { value: 1, label: "Lun" },
+    { value: 2, label: "Mar" },
+    { value: 3, label: "Mié" },
+    { value: 4, label: "Jue" },
+    { value: 5, label: "Vie" },
+  ];
+
+  const openBlockForm = (block?: any) => {
+    if (block) {
+      setEditBlock(block);
+      setBlockNum(block.block_number.toString());
+      setBlockStart(block.start_time.slice(0, 5));
+      setBlockEnd(block.end_time.slice(0, 5));
+      setBlockDays(block.available_days || [1, 2, 3, 4, 5]);
+    } else {
+      setEditBlock(null);
+      const nextNum = scheduleBlocks?.length ? Math.max(...scheduleBlocks.map(b => b.block_number)) + 1 : 1;
+      setBlockNum(nextNum.toString());
+      setBlockStart("");
+      setBlockEnd("");
+      setBlockDays([1, 2, 3, 4, 5]);
+    }
+    setBlockDialog(true);
+  };
+
+  const saveBlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editBlock) {
+        const { error } = await supabase
+          .from("schedule_blocks")
+          .update({ block_number: parseInt(blockNum), start_time: blockStart, end_time: blockEnd, available_days: blockDays })
+          .eq("id", editBlock.id);
+        if (error) throw error;
+        toast({ title: "Bloque actualizado" });
+      } else {
+        const { error } = await supabase
+          .from("schedule_blocks")
+          .insert({ block_number: parseInt(blockNum), start_time: blockStart, end_time: blockEnd, available_days: blockDays });
+        if (error) throw error;
+        toast({ title: "Bloque creado" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["schedule_blocks"] });
+      setBlockDialog(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const deleteBlock = async (id: string) => {
+    if (!confirm("¿Eliminar este bloque?")) return;
+    const { error } = await supabase.from("schedule_blocks").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Bloque eliminado" });
+      queryClient.invalidateQueries({ queryKey: ["schedule_blocks"] });
+    }
+  };
+
+  const toggleDay = (day: number) => {
+    setBlockDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort());
+  };
 
   // Reject dialog
   const [rejectDialog, setRejectDialog] = useState(false);
@@ -301,6 +373,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="schedule"><CalendarDays className="h-4 w-4 mr-1.5" />Calendario</TabsTrigger>
             <TabsTrigger value="materials"><Package className="h-4 w-4 mr-1.5" />Materiales</TabsTrigger>
             <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Usuarios</TabsTrigger>
+            <TabsTrigger value="blocks"><LayoutGrid className="h-4 w-4 mr-1.5" />Bloques</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
@@ -516,6 +589,48 @@ export default function AdminDashboard() {
               </div>
             )}
           </TabsContent>
+
+          {/* Blocks tab */}
+          <TabsContent value="blocks" className="space-y-4">
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => openBlockForm()}>
+                <Plus className="h-4 w-4 mr-1" /> Agregar Bloque
+              </Button>
+            </div>
+            {!scheduleBlocks?.length ? (
+              <Card><CardContent className="py-12 text-center text-muted-foreground">No hay bloques configurados.</CardContent></Card>
+            ) : (
+              <div className="space-y-2">
+                {scheduleBlocks.map(b => (
+                  <Card key={b.id} className="animate-fade-in">
+                    <CardContent className="p-4 flex items-center justify-between gap-3">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground">Bloque {b.block_number}</span>
+                          <Badge variant="secondary">{b.start_time.slice(0, 5)} - {b.end_time.slice(0, 5)}</Badge>
+                        </div>
+                        <div className="flex gap-1">
+                          {DAY_LABELS.map(d => (
+                            <Badge
+                              key={d.value}
+                              variant={b.available_days?.includes(d.value) ? "default" : "outline"}
+                              className={`text-[10px] px-1.5 ${b.available_days?.includes(d.value) ? "" : "opacity-40"}`}
+                            >
+                              {d.label}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openBlockForm(b)}><Edit className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteBlock(b.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -623,6 +738,41 @@ export default function AdminDashboard() {
               {uploadingLogo && <p className="text-sm text-muted-foreground">Subiendo...</p>}
             </div>
             <Button type="submit" className="w-full">Guardar</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Block dialog */}
+      <Dialog open={blockDialog} onOpenChange={setBlockDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{editBlock ? "Editar Bloque" : "Nuevo Bloque"}</DialogTitle></DialogHeader>
+          <form onSubmit={saveBlock} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Número de bloque</Label>
+              <Input type="number" min="1" value={blockNum} onChange={e => setBlockNum(e.target.value)} required />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Hora inicio</Label>
+                <Input type="time" value={blockStart} onChange={e => setBlockStart(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Hora fin</Label>
+                <Input type="time" value={blockEnd} onChange={e => setBlockEnd(e.target.value)} required />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Días disponibles</Label>
+              <div className="flex gap-3">
+                {DAY_LABELS.map(d => (
+                  <label key={d.value} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox checked={blockDays.includes(d.value)} onCheckedChange={() => toggleDay(d.value)} />
+                    <span className="text-sm">{d.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <Button type="submit" className="w-full">{editBlock ? "Actualizar" : "Crear"}</Button>
           </form>
         </DialogContent>
       </Dialog>
