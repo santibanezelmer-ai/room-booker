@@ -187,6 +187,30 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_blocks: {
+        Row: {
+          block_number: number
+          created_at: string
+          end_time: string
+          id: string
+          start_time: string
+        }
+        Insert: {
+          block_number: number
+          created_at?: string
+          end_time: string
+          id?: string
+          start_time: string
+        }
+        Update: {
+          block_number?: number
+          created_at?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+        }
+        Relationships: []
+      }
       schedule_settings: {
         Row: {
           allow_double_blocks: boolean
