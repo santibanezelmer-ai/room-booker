@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays, getISODay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { useReservations } from "@/hooks/useReservations";
@@ -30,15 +29,18 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
   const { data: profiles } = useProfiles();
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  // Monday to Thursday (4 days)
-  const weekDays = Array.from({ length: 4 }, (_, i) => addDays(weekStart, i));
+  // Monday to Friday (5 days)
+  const weekDays = Array.from({ length: 5 }, (_, i) => addDays(weekStart, i));
 
   const dateRange = {
     from: format(weekDays[0], "yyyy-MM-dd"),
-    to: format(weekDays[3], "yyyy-MM-dd"),
+    to: format(weekDays[4], "yyyy-MM-dd"),
   };
 
   const { data: reservations, isLoading: loadingRes } = useReservations(dateRange);
+
+  // All unique block numbers across all days
+  const allBlocks = blocks || [];
 
   const getTeacherName = (teacherId: string) => {
     const p = profiles?.find(pr => pr.user_id === teacherId);
@@ -52,7 +54,6 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
   };
 
   const isToday = (day: Date) => format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
-
   const formatTime = (t: string) => t.slice(0, 5);
 
   if (loadingBlocks) return <Skeleton className="h-96 w-full rounded-xl" />;
@@ -81,7 +82,7 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
           </tr>
         </thead>
         <tbody>
-          {blocks?.map((block, idx) => (
+          {allBlocks.map((block, idx) => (
             <tr key={block.block_number} className={idx % 2 === 0 ? "" : "bg-muted/20"}>
               <td className="border-b border-r border-border px-3 py-2.5 bg-muted/30">
                 <div className="font-semibold text-foreground text-xs">Bloque {block.block_number}</div>
@@ -89,6 +90,20 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
               </td>
               {weekDays.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
+                const dayOfWeek = getISODay(day); // 1=Mon, 5=Fri
+                const isAvailable = block.available_days?.includes(dayOfWeek) ?? true;
+
+                if (!isAvailable) {
+                  return (
+                    <td
+                      key={dateStr}
+                      className="border-b border-r last:border-r-0 border-border bg-muted/40 px-2 py-2 text-center"
+                    >
+                      <span className="text-[10px] text-muted-foreground/50">—</span>
+                    </td>
+                  );
+                }
+
                 const reservation = getReservation(dateStr, block.block_number);
 
                 return (
