@@ -589,6 +589,48 @@ export default function AdminDashboard() {
               </div>
             )}
           </TabsContent>
+
+          {/* Blocks tab */}
+          <TabsContent value="blocks" className="space-y-4">
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => openBlockForm()}>
+                <Plus className="h-4 w-4 mr-1" /> Agregar Bloque
+              </Button>
+            </div>
+            {!scheduleBlocks?.length ? (
+              <Card><CardContent className="py-12 text-center text-muted-foreground">No hay bloques configurados.</CardContent></Card>
+            ) : (
+              <div className="space-y-2">
+                {scheduleBlocks.map(b => (
+                  <Card key={b.id} className="animate-fade-in">
+                    <CardContent className="p-4 flex items-center justify-between gap-3">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground">Bloque {b.block_number}</span>
+                          <Badge variant="secondary">{b.start_time.slice(0, 5)} - {b.end_time.slice(0, 5)}</Badge>
+                        </div>
+                        <div className="flex gap-1">
+                          {DAY_LABELS.map(d => (
+                            <Badge
+                              key={d.value}
+                              variant={b.available_days?.includes(d.value) ? "default" : "outline"}
+                              className={`text-[10px] px-1.5 ${b.available_days?.includes(d.value) ? "" : "opacity-40"}`}
+                            >
+                              {d.label}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openBlockForm(b)}><Edit className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteBlock(b.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </main>
 
