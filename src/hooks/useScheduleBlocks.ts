@@ -6,6 +6,7 @@ export interface ScheduleBlock {
   block_number: number;
   start_time: string;
   end_time: string;
+  available_days: number[];
 }
 
 export function useScheduleBlocks() {
