@@ -741,6 +741,41 @@ export default function AdminDashboard() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Block dialog */}
+      <Dialog open={blockDialog} onOpenChange={setBlockDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{editBlock ? "Editar Bloque" : "Nuevo Bloque"}</DialogTitle></DialogHeader>
+          <form onSubmit={saveBlock} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Número de bloque</Label>
+              <Input type="number" min="1" value={blockNum} onChange={e => setBlockNum(e.target.value)} required />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Hora inicio</Label>
+                <Input type="time" value={blockStart} onChange={e => setBlockStart(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Hora fin</Label>
+                <Input type="time" value={blockEnd} onChange={e => setBlockEnd(e.target.value)} required />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Días disponibles</Label>
+              <div className="flex gap-3">
+                {DAY_LABELS.map(d => (
+                  <label key={d.value} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox checked={blockDays.includes(d.value)} onCheckedChange={() => toggleDay(d.value)} />
+                    <span className="text-sm">{d.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <Button type="submit" className="w-full">{editBlock ? "Actualizar" : "Crear"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
