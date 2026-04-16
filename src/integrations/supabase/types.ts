@@ -189,6 +189,7 @@ export type Database = {
       }
       schedule_blocks: {
         Row: {
+          available_days: number[]
           block_number: number
           created_at: string
           end_time: string
@@ -196,6 +197,7 @@ export type Database = {
           start_time: string
         }
         Insert: {
+          available_days?: number[]
           block_number: number
           created_at?: string
           end_time: string
@@ -203,6 +205,7 @@ export type Database = {
           start_time: string
         }
         Update: {
+          available_days?: number[]
           block_number?: number
           created_at?: string
           end_time?: string
