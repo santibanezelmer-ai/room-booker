@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { useScheduleSettings, generateBlocks } from "@/hooks/useScheduleSettings";
+import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { useCreateReservation } from "@/hooks/useReservations";
 import { useMaterials } from "@/hooks/useMaterials";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ interface ReservationFormProps {
 }
 
 export default function ReservationForm({ open, onOpenChange, preselectedDate, preselectedBlock }: ReservationFormProps) {
-  const { data: settings } = useScheduleSettings();
+  const { data: blocks } = useScheduleBlocks();
   const { data: materials } = useMaterials();
   const createReservation = useCreateReservation();
   const { user } = useAuth();
@@ -38,8 +38,6 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
   const [selectedMaterials, setSelectedMaterials] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const blocks = settings ? generateBlocks(settings) : [];
-
   useEffect(() => {
     if (preselectedDate) setDate(preselectedDate);
     if (preselectedBlock) {
@@ -48,7 +46,9 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
     }
   }, [preselectedDate, preselectedBlock]);
 
-  const toggleMaterial = (materialId: string, maxQty: number) => {
+  const formatTime = (t: string) => t.slice(0, 5);
+
+  const toggleMaterial = (materialId: string) => {
     setSelectedMaterials(prev => {
       const next = { ...prev };
       if (next[materialId]) {
@@ -68,7 +68,6 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
     e.preventDefault();
     setSubmitting(true);
     try {
-      // Create room reservation
       await createReservation.mutateAsync({
         reservation_date: date,
         block_start: parseInt(blockStart),
@@ -77,7 +76,6 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
         observation: observation || undefined,
       });
 
-      // Create material reservations if any
       const matEntries = Object.entries(selectedMaterials);
       if (matEntries.length > 0) {
         const matReservations = matEntries.map(([material_id, quantity]) => ({
@@ -124,9 +122,9 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
               <Select value={blockStart} onValueChange={v => { setBlockStart(v); if (parseInt(v) > parseInt(blockEnd)) setBlockEnd(v); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {blocks.map(b => (
-                    <SelectItem key={b.number} value={b.number.toString()}>
-                      Bloque {b.number} ({b.startTime})
+                  {blocks?.map(b => (
+                    <SelectItem key={b.block_number} value={b.block_number.toString()}>
+                      Bloque {b.block_number} ({formatTime(b.start_time)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -137,9 +135,9 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
               <Select value={blockEnd} onValueChange={setBlockEnd}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {blocks.filter(b => b.number >= parseInt(blockStart)).map(b => (
-                    <SelectItem key={b.number} value={b.number.toString()}>
-                      Bloque {b.number} ({b.endTime})
+                  {blocks?.filter(b => b.block_number >= parseInt(blockStart)).map(b => (
+                    <SelectItem key={b.block_number} value={b.block_number.toString()}>
+                      Bloque {b.block_number} ({formatTime(b.end_time)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -151,7 +149,6 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
             <Input value={courseName} onChange={e => setCourseName(e.target.value)} required placeholder="Ej: 8°A - Tecnología" />
           </div>
 
-          {/* Materials section */}
           {materials && materials.length > 0 && (
             <div className="space-y-2">
               <Label>Materiales adicionales (opcional)</Label>
@@ -160,7 +157,7 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
                   <div key={m.id} className="flex items-center gap-3">
                     <Checkbox
                       checked={!!selectedMaterials[m.id]}
-                      onCheckedChange={() => toggleMaterial(m.id, m.quantity_available)}
+                      onCheckedChange={() => toggleMaterial(m.id)}
                     />
                     <span className="text-sm flex-1 text-foreground">{m.name} <span className="text-muted-foreground">(disp: {m.quantity_available})</span></span>
                     {selectedMaterials[m.id] && (

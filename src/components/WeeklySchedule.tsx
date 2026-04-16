@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { es } from "date-fns/locale";
-import { useScheduleSettings, generateBlocks } from "@/hooks/useScheduleSettings";
+import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { useReservations } from "@/hooks/useReservations";
 import { useProfiles } from "@/hooks/useProfiles";
 import { Badge } from "@/components/ui/badge";
@@ -26,20 +26,19 @@ interface WeeklyScheduleProps {
 }
 
 export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklyScheduleProps) {
-  const { data: settings, isLoading: loadingSettings } = useScheduleSettings();
+  const { data: blocks, isLoading: loadingBlocks } = useScheduleBlocks();
   const { data: profiles } = useProfiles();
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 5 }, (_, i) => addDays(weekStart, i));
+  // Monday to Thursday (4 days)
+  const weekDays = Array.from({ length: 4 }, (_, i) => addDays(weekStart, i));
 
   const dateRange = {
     from: format(weekDays[0], "yyyy-MM-dd"),
-    to: format(weekDays[4], "yyyy-MM-dd"),
+    to: format(weekDays[3], "yyyy-MM-dd"),
   };
 
   const { data: reservations, isLoading: loadingRes } = useReservations(dateRange);
-
-  const blocks = useMemo(() => (settings ? generateBlocks(settings) : []), [settings]);
 
   const getTeacherName = (teacherId: string) => {
     const p = profiles?.find(pr => pr.user_id === teacherId);
@@ -54,7 +53,9 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
 
   const isToday = (day: Date) => format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
 
-  if (loadingSettings) return <Skeleton className="h-96 w-full rounded-xl" />;
+  const formatTime = (t: string) => t.slice(0, 5);
+
+  if (loadingBlocks) return <Skeleton className="h-96 w-full rounded-xl" />;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
@@ -80,15 +81,15 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
           </tr>
         </thead>
         <tbody>
-          {blocks.map((block, idx) => (
-            <tr key={block.number} className={idx % 2 === 0 ? "" : "bg-muted/20"}>
+          {blocks?.map((block, idx) => (
+            <tr key={block.block_number} className={idx % 2 === 0 ? "" : "bg-muted/20"}>
               <td className="border-b border-r border-border px-3 py-2.5 bg-muted/30">
-                <div className="font-semibold text-foreground text-xs">Bloque {block.number}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{block.startTime} - {block.endTime}</div>
+                <div className="font-semibold text-foreground text-xs">Bloque {block.block_number}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{formatTime(block.start_time)} - {formatTime(block.end_time)}</div>
               </td>
               {weekDays.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
-                const reservation = getReservation(dateStr, block.number);
+                const reservation = getReservation(dateStr, block.block_number);
 
                 return (
                   <td
@@ -98,7 +99,7 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
                         ? "hover:bg-primary/5 cursor-pointer group"
                         : ""
                     } ${isToday(day) ? "bg-primary/[0.03]" : ""}`}
-                    onClick={() => !reservation && onSlotClick?.(dateStr, block.number)}
+                    onClick={() => !reservation && onSlotClick?.(dateStr, block.block_number)}
                   >
                     {loadingRes ? (
                       <Skeleton className="h-8 w-full rounded-md" />

@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useReservations, useUpdateReservationStatus } from "@/hooks/useReservations";
 import { useMaterials, useCreateMaterial, useUpdateMaterial, useDeleteMaterial } from "@/hooks/useMaterials";
 import { useProfiles } from "@/hooks/useProfiles";
-import { useScheduleSettings } from "@/hooks/useScheduleSettings";
+import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { useEstablishmentSettings, useUpdateEstablishmentSettings } from "@/hooks/useEstablishmentSettings";
 import { supabase } from "@/integrations/supabase/client";
 import WeeklySchedule from "@/components/WeeklySchedule";
@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format, addWeeks, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import {
-  CalendarDays, ClipboardList, Package, Settings, LogOut, Monitor,
+  CalendarDays, ClipboardList, Package, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
   Users, Image, KeyRound, History, Building2, Mail
 } from "lucide-react";
@@ -115,13 +115,8 @@ export default function AdminDashboard() {
   const [matDesc, setMatDesc] = useState("");
   const [matQty, setMatQty] = useState("0");
 
-  // Settings
-  const { data: settings } = useScheduleSettings();
-  const [settingsDialog, setSettingsDialog] = useState(false);
-  const [sStart, setSStart] = useState("");
-  const [sEnd, setSEnd] = useState("");
-  const [sDuration, setSDuration] = useState("");
-  const [sDouble, setSDouble] = useState(true);
+  // Schedule blocks
+  const { data: scheduleBlocks } = useScheduleBlocks();
 
   // Reject dialog
   const [rejectDialog, setRejectDialog] = useState(false);
@@ -221,31 +216,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const openSettings = () => {
-    if (settings) {
-      setSStart(settings.start_time.slice(0, 5));
-      setSEnd(settings.end_time.slice(0, 5));
-      setSDuration(settings.block_duration_minutes.toString());
-      setSDouble(settings.allow_double_blocks);
-    }
-    setSettingsDialog(true);
-  };
-
-  const saveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!settings) return;
-    const { error } = await supabase
-      .from("schedule_settings")
-      .update({ start_time: sStart, end_time: sEnd, block_duration_minutes: parseInt(sDuration), allow_double_blocks: sDouble })
-      .eq("id", settings.id);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Configuración guardada" });
-      queryClient.invalidateQueries({ queryKey: ["schedule_settings"] });
-      setSettingsDialog(false);
-    }
-  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -315,9 +285,6 @@ export default function AdminDashboard() {
             </Button>
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setPasswordDialog(true)} title="Cambiar clave">
               <KeyRound className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-9 w-9" onClick={openSettings} title="Configuración">
-              <Settings className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={signOut} title="Cerrar sesión">
               <LogOut className="h-4 w-4" />
@@ -588,33 +555,6 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Settings dialog */}
-      <Dialog open={settingsDialog} onOpenChange={setSettingsDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Configuración de Horario</DialogTitle></DialogHeader>
-          <form onSubmit={saveSettings} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Hora inicio</Label>
-                <Input type="time" value={sStart} onChange={e => setSStart(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label>Hora término</Label>
-                <Input type="time" value={sEnd} onChange={e => setSEnd(e.target.value)} required />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Duración de bloque (minutos)</Label>
-              <Input type="number" min="15" max="120" value={sDuration} onChange={e => setSDuration(e.target.value)} required />
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="double" checked={sDouble} onChange={e => setSDouble(e.target.checked)} className="rounded" />
-              <Label htmlFor="double">Permitir bloques dobles</Label>
-            </div>
-            <Button type="submit" className="w-full">Guardar</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Email change dialog */}
       <Dialog open={emailDialog} onOpenChange={setEmailDialog}>
