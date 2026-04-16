@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useReservations, useUpdateReservationStatus } from "@/hooks/useReservations";
 import { useMaterials, useCreateMaterial, useUpdateMaterial, useDeleteMaterial } from "@/hooks/useMaterials";
 import { useProfiles } from "@/hooks/useProfiles";
-import { useScheduleSettings } from "@/hooks/useScheduleSettings";
+import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { useEstablishmentSettings, useUpdateEstablishmentSettings } from "@/hooks/useEstablishmentSettings";
 import { supabase } from "@/integrations/supabase/client";
 import WeeklySchedule from "@/components/WeeklySchedule";
