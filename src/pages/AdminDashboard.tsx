@@ -115,13 +115,8 @@ export default function AdminDashboard() {
   const [matDesc, setMatDesc] = useState("");
   const [matQty, setMatQty] = useState("0");
 
-  // Settings
-  const { data: settings } = useScheduleSettings();
-  const [settingsDialog, setSettingsDialog] = useState(false);
-  const [sStart, setSStart] = useState("");
-  const [sEnd, setSEnd] = useState("");
-  const [sDuration, setSDuration] = useState("");
-  const [sDouble, setSDouble] = useState(true);
+  // Schedule blocks
+  const { data: scheduleBlocks } = useScheduleBlocks();
 
   // Reject dialog
   const [rejectDialog, setRejectDialog] = useState(false);
