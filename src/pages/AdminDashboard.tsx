@@ -373,6 +373,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="schedule"><CalendarDays className="h-4 w-4 mr-1.5" />Calendario</TabsTrigger>
             <TabsTrigger value="materials"><Package className="h-4 w-4 mr-1.5" />Materiales</TabsTrigger>
             <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Usuarios</TabsTrigger>
+            <TabsTrigger value="blocks"><LayoutGrid className="h-4 w-4 mr-1.5" />Bloques</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
