@@ -118,6 +118,77 @@ export default function AdminDashboard() {
 
   // Schedule blocks
   const { data: scheduleBlocks } = useScheduleBlocks();
+  const [blockDialog, setBlockDialog] = useState(false);
+  const [editBlock, setEditBlock] = useState<any>(null);
+  const [blockNum, setBlockNum] = useState("");
+  const [blockStart, setBlockStart] = useState("");
+  const [blockEnd, setBlockEnd] = useState("");
+  const [blockDays, setBlockDays] = useState<number[]>([1, 2, 3, 4, 5]);
+
+  const DAY_LABELS = [
+    { value: 1, label: "Lun" },
+    { value: 2, label: "Mar" },
+    { value: 3, label: "Mié" },
+    { value: 4, label: "Jue" },
+    { value: 5, label: "Vie" },
+  ];
+
+  const openBlockForm = (block?: any) => {
+    if (block) {
+      setEditBlock(block);
+      setBlockNum(block.block_number.toString());
+      setBlockStart(block.start_time.slice(0, 5));
+      setBlockEnd(block.end_time.slice(0, 5));
+      setBlockDays(block.available_days || [1, 2, 3, 4, 5]);
+    } else {
+      setEditBlock(null);
+      const nextNum = scheduleBlocks?.length ? Math.max(...scheduleBlocks.map(b => b.block_number)) + 1 : 1;
+      setBlockNum(nextNum.toString());
+      setBlockStart("");
+      setBlockEnd("");
+      setBlockDays([1, 2, 3, 4, 5]);
+    }
+    setBlockDialog(true);
+  };
+
+  const saveBlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editBlock) {
+        const { error } = await supabase
+          .from("schedule_blocks")
+          .update({ block_number: parseInt(blockNum), start_time: blockStart, end_time: blockEnd, available_days: blockDays })
+          .eq("id", editBlock.id);
+        if (error) throw error;
+        toast({ title: "Bloque actualizado" });
+      } else {
+        const { error } = await supabase
+          .from("schedule_blocks")
+          .insert({ block_number: parseInt(blockNum), start_time: blockStart, end_time: blockEnd, available_days: blockDays });
+        if (error) throw error;
+        toast({ title: "Bloque creado" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["schedule_blocks"] });
+      setBlockDialog(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const deleteBlock = async (id: string) => {
+    if (!confirm("¿Eliminar este bloque?")) return;
+    const { error } = await supabase.from("schedule_blocks").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Bloque eliminado" });
+      queryClient.invalidateQueries({ queryKey: ["schedule_blocks"] });
+    }
+  };
+
+  const toggleDay = (day: number) => {
+    setBlockDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort());
+  };
 
   // Reject dialog
   const [rejectDialog, setRejectDialog] = useState(false);
