@@ -22,8 +22,9 @@ import { es } from "date-fns/locale";
 import {
   CalendarDays, ClipboardList, Package, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
-  Users, Image, KeyRound, History, Building2, Mail
+  Users, Image, KeyRound, History, Building2, Mail, LayoutGrid
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
