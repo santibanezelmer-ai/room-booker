@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "bg-status-pending text-status-pending-foreground" },
@@ -355,6 +356,7 @@ export default function AdminDashboard() {
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setEmailDialog(true)} title="Cambiar correo">
               <Mail className="h-4 w-4" />
             </Button>
+            <ThemeToggle />
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setPasswordDialog(true)} title="Cambiar clave">
               <KeyRound className="h-4 w-4" />
             </Button>
