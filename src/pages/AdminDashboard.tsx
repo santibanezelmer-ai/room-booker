@@ -225,9 +225,10 @@ export default function AdminDashboard() {
     },
   });
 
-  const filteredReservations = reservations?.filter(
-    r => statusFilter === "all" || r.status === statusFilter
-  );
+  const filteredReservations = reservations
+    ?.filter(r => statusFilter === "all" || r.status === statusFilter)
+    ?.slice()
+    ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   // History: past reservations with date + status filters
   const historyReservations = reservations
