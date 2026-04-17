@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useReservations, useUpdateReservationStatus } from "@/hooks/useReservations";
 import { useMaterials, useCreateMaterial, useUpdateMaterial, useDeleteMaterial } from "@/hooks/useMaterials";
-import { useProfiles } from "@/hooks/useProfiles";
+import { useAdminProfiles } from "@/hooks/useProfiles";
 import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { useEstablishmentSettings, useUpdateEstablishmentSettings } from "@/hooks/useEstablishmentSettings";
 import { supabase } from "@/integrations/supabase/client";
@@ -100,7 +100,7 @@ export default function AdminDashboard() {
   const updateStatus = useUpdateReservationStatus();
 
   // Profiles
-  const { data: profiles } = useProfiles();
+  const { data: profiles } = useAdminProfiles();
   const getTeacherName = (teacherId: string) => {
     const p = profiles?.find(p => p.user_id === teacherId);
     return p ? `${p.full_name} (${p.email})` : "—";
