@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CalendarDays, Plus, ClipboardList, LogOut, ChevronLeft, ChevronRight, Monitor, KeyRound } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 import { addWeeks, subWeeks, format, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -85,6 +86,7 @@ export default function TeacherDashboard() {
             <Button size="sm" onClick={() => { setPreDate(undefined); setPreBlock(undefined); setFormOpen(true); }} className="shadow-sm">
               <Plus className="h-4 w-4 mr-1" /> Nueva Reserva
             </Button>
+            <ThemeToggle />
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setPasswordDialog(true)} title="Cambiar clave">
               <KeyRound className="h-4 w-4" />
             </Button>
