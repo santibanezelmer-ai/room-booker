@@ -248,25 +248,61 @@ export default function AdminDashboard() {
     },
   });
 
+  const matchesSearch = (r: any, q: string) => {
+    if (!q) return true;
+    const needle = q.toLowerCase().trim();
+    const teacher = getTeacherShortName(r.teacher_id).toLowerCase();
+    const email = profiles?.find(p => p.user_id === r.teacher_id)?.email?.toLowerCase() || "";
+    return (
+      r.course_name.toLowerCase().includes(needle) ||
+      teacher.includes(needle) ||
+      email.includes(needle) ||
+      r.reservation_date.includes(needle) ||
+      format(new Date(r.reservation_date + "T12:00:00"), "EEEE d MMMM yyyy", { locale: es }).toLowerCase().includes(needle)
+    );
+  };
+
   const filteredReservations = reservations
     ?.filter(r => statusFilter === "all" || r.status === statusFilter)
+    ?.filter(r => matchesSearch(r, requestSearch))
     ?.slice()
     ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  // History: past reservations with date + status filters
   const historyReservations = reservations
     ?.filter(r => {
       if (historyStatus !== "all" && r.status !== historyStatus) return false;
       if (historyDateFrom && r.reservation_date < historyDateFrom) return false;
       if (historyDateTo && r.reservation_date > historyDateTo) return false;
+      if (!matchesSearch(r, historySearch)) return false;
       return true;
     })
     ?.sort((a, b) => b.reservation_date.localeCompare(a.reservation_date));
+
+  // Group pending recurrent reservations by group id for batch approve
+  const pendingGroups = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    (reservations || []).forEach((r: any) => {
+      if (r.recurrence_group_id && r.status === "pending") {
+        groups[r.recurrence_group_id] = groups[r.recurrence_group_id] || [];
+        groups[r.recurrence_group_id].push(r);
+      }
+    });
+    return groups;
+  }, [reservations]);
 
   const handleApprove = async (id: string) => {
     try {
       await updateStatus.mutateAsync({ id, status: "approved" });
       toast({ title: "Reserva aprobada" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleApproveGroup = async (groupId: string) => {
+    try {
+      await approveGroup.mutateAsync(groupId);
+      toast({ title: "Grupo aprobado", description: "Todas las reservas pendientes del grupo fueron aprobadas." });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -282,6 +318,39 @@ export default function AdminDashboard() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
+
+  const handleRelease = async () => {
+    if (!releaseReason.trim()) {
+      toast({ title: "Motivo requerido", description: "Indica por qué liberas esta reserva.", variant: "destructive" });
+      return;
+    }
+    try {
+      await releaseReservation.mutateAsync({ id: releaseId, reason: releaseReason.trim() });
+      toast({ title: "Reserva liberada", description: "El bloque vuelve a estar disponible." });
+      setReleaseDialog(false);
+      setReleaseId("");
+      setReleaseReason("");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // Month view data
+  const monthStart = startOfMonth(monthDate);
+  const monthEnd = endOfMonth(monthDate);
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  const approvedByDay = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    (reservations || []).forEach((r: any) => {
+      if (r.status === "approved") {
+        map[r.reservation_date] = map[r.reservation_date] || [];
+        map[r.reservation_date].push(r);
+      }
+    });
+    return map;
+  }, [reservations]);
 
   const openMaterialForm = (mat?: any) => {
     if (mat) {
