@@ -1,6 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useReservations, useUpdateReservationStatus } from "@/hooks/useReservations";
+import {
+  useReservations,
+  useUpdateReservationStatus,
+  useReleaseReservation,
+  useApproveRecurrenceGroup,
+} from "@/hooks/useReservations";
 import { useMaterials, useCreateMaterial, useUpdateMaterial, useDeleteMaterial } from "@/hooks/useMaterials";
 import { useAdminProfiles } from "@/hooks/useProfiles";
 import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
@@ -14,15 +19,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { format, addWeeks, subWeeks, startOfWeek, endOfWeek } from "date-fns";
+import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   CalendarDays, ClipboardList, Package, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
-  Users, Image, KeyRound, History, Building2, Mail, LayoutGrid
+  Users, Image, KeyRound, History, Building2, Mail, LayoutGrid, Search, Repeat, Unlock, List, CalendarRange
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +37,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "bg-status-pending text-status-pending-foreground" },
   approved: { label: "Aprobada", className: "bg-status-approved text-status-approved-foreground" },
   rejected: { label: "Rechazada", className: "bg-status-rejected text-status-rejected-foreground" },
+  cancelled_by_admin: { label: "Liberada", className: "bg-muted text-muted-foreground" },
 };
 
 export default function AdminDashboard() {
