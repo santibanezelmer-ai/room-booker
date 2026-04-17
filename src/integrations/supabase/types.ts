@@ -150,10 +150,12 @@ export type Database = {
           admin_notes: string | null
           block_end: number
           block_start: number
+          cancellation_reason: string | null
           course_name: string
           created_at: string
           id: string
           observation: string | null
+          recurrence_group_id: string | null
           reservation_date: string
           status: string
           teacher_id: string
@@ -163,10 +165,12 @@ export type Database = {
           admin_notes?: string | null
           block_end: number
           block_start: number
+          cancellation_reason?: string | null
           course_name: string
           created_at?: string
           id?: string
           observation?: string | null
+          recurrence_group_id?: string | null
           reservation_date: string
           status?: string
           teacher_id: string
@@ -176,10 +180,12 @@ export type Database = {
           admin_notes?: string | null
           block_end?: number
           block_start?: number
+          cancellation_reason?: string | null
           course_name?: string
           created_at?: string
           id?: string
           observation?: string | null
+          recurrence_group_id?: string | null
           reservation_date?: string
           status?: string
           teacher_id?: string
@@ -261,7 +267,21 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_teachers: {
+        Row: {
+          full_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          full_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          full_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
