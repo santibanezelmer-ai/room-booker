@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, addWeeks, parseISO, getISODay } from "date-fns";
 import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
-import { useCreateReservation } from "@/hooks/useReservations";
+import { useCreateReservation, useCreateRecurringReservations } from "@/hooks/useReservations";
 import { useMaterials } from "@/hooks/useMaterials";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
+import { Repeat } from "lucide-react";
 
 interface ReservationFormProps {
   open: boolean;
@@ -26,6 +27,7 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
   const { data: blocks } = useScheduleBlocks();
   const { data: materials } = useMaterials();
   const createReservation = useCreateReservation();
+  const createRecurring = useCreateRecurringReservations();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -37,6 +39,10 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
   const [observation, setObservation] = useState("");
   const [selectedMaterials, setSelectedMaterials] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Recurrence
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
 
   useEffect(() => {
     if (preselectedDate) setDate(preselectedDate);
@@ -51,11 +57,8 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
   const toggleMaterial = (materialId: string) => {
     setSelectedMaterials(prev => {
       const next = { ...prev };
-      if (next[materialId]) {
-        delete next[materialId];
-      } else {
-        next[materialId] = 1;
-      }
+      if (next[materialId]) delete next[materialId];
+      else next[materialId] = 1;
       return next;
     });
   };
@@ -64,46 +67,123 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
     setSelectedMaterials(prev => ({ ...prev, [materialId]: qty }));
   };
 
+  // Compute recurrence dates: same weekday, weekly, until end date inclusive.
+  const recurrenceDates = (): string[] => {
+    if (!isRecurring || !recurrenceEndDate) return [date];
+    const start = parseISO(date);
+    const end = parseISO(recurrenceEndDate);
+    if (end < start) return [date];
+    const dates: string[] = [];
+    let cur = start;
+    while (cur <= end) {
+      dates.push(format(cur, "yyyy-MM-dd"));
+      cur = addWeeks(cur, 1);
+    }
+    return dates;
+  };
+
+  // Validate that all recurrence dates fall on a day where the chosen blocks are available.
+  const validateRecurrence = (dates: string[]): string | null => {
+    if (!blocks) return null;
+    const bs = parseInt(blockStart);
+    const be = parseInt(blockEnd);
+    const blocksInRange = blocks.filter(b => b.block_number >= bs && b.block_number <= be);
+    for (const d of dates) {
+      const dow = getISODay(parseISO(d));
+      for (const b of blocksInRange) {
+        if (!(b.available_days?.includes(dow) ?? true)) {
+          return `El bloque ${b.block_number} no está disponible los ${format(parseISO(d), "EEEE")}.`;
+        }
+      }
+    }
+    return null;
+  };
+
+  const resetForm = () => {
+    setCourseName("");
+    setObservation("");
+    setSelectedMaterials({});
+    setIsRecurring(false);
+    setRecurrenceEndDate("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (courseName.trim().length === 0 || courseName.length > 120) {
+      toast({ title: "Curso inválido", description: "Máximo 120 caracteres.", variant: "destructive" });
+      return;
+    }
+    if (observation.length > 500) {
+      toast({ title: "Observación muy larga", description: "Máximo 500 caracteres.", variant: "destructive" });
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await createReservation.mutateAsync({
-        reservation_date: date,
-        block_start: parseInt(blockStart),
-        block_end: parseInt(blockEnd),
-        course_name: courseName,
-        observation: observation || undefined,
-      });
+      const dates = recurrenceDates();
 
-      const matEntries = Object.entries(selectedMaterials);
-      if (matEntries.length > 0) {
-        const matReservations = matEntries.map(([material_id, quantity]) => ({
+      if (isRecurring && dates.length > 1) {
+        const err = validateRecurrence(dates);
+        if (err) {
+          toast({ title: "No se puede crear", description: err, variant: "destructive" });
+          setSubmitting(false);
+          return;
+        }
+        if (dates.length > 52) {
+          toast({ title: "Demasiadas fechas", description: "Máximo 52 ocurrencias.", variant: "destructive" });
+          setSubmitting(false);
+          return;
+        }
+        await createRecurring.mutateAsync({
+          dates,
+          block_start: parseInt(blockStart),
+          block_end: parseInt(blockEnd),
+          course_name: courseName.trim(),
+          observation: observation || undefined,
+        });
+        toast({
+          title: "Solicitudes recurrentes enviadas",
+          description: `Se crearon ${dates.length} reservas pendientes.`,
+        });
+      } else {
+        await createReservation.mutateAsync({
           reservation_date: date,
           block_start: parseInt(blockStart),
           block_end: parseInt(blockEnd),
-          course_name: courseName,
-          material_id,
-          quantity,
-          teacher_id: user!.id,
-          observation: observation || null,
-        }));
-        const { error } = await supabase.from("material_reservations").insert(matReservations);
-        if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["material_reservations"] });
+          course_name: courseName.trim(),
+          observation: observation || undefined,
+        });
+
+        const matEntries = Object.entries(selectedMaterials);
+        if (matEntries.length > 0) {
+          const matReservations = matEntries.map(([material_id, quantity]) => ({
+            reservation_date: date,
+            block_start: parseInt(blockStart),
+            block_end: parseInt(blockEnd),
+            course_name: courseName.trim(),
+            material_id,
+            quantity,
+            teacher_id: user!.id,
+            observation: observation || null,
+          }));
+          const { error } = await supabase.from("material_reservations").insert(matReservations);
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ["material_reservations"] });
+        }
+
+        toast({ title: "Solicitud enviada", description: "Tu reserva está pendiente de aprobación." });
       }
 
-      toast({ title: "Solicitud enviada", description: "Tu reserva está pendiente de aprobación." });
       onOpenChange(false);
-      setCourseName("");
-      setObservation("");
-      setSelectedMaterials({});
+      resetForm();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
   };
+
+  const previewCount = isRecurring && recurrenceEndDate ? recurrenceDates().length : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,10 +226,45 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
           </div>
           <div className="space-y-2">
             <Label>Asignatura / Curso</Label>
-            <Input value={courseName} onChange={e => setCourseName(e.target.value)} required placeholder="Ej: 8°A - Tecnología" />
+            <Input
+              value={courseName}
+              onChange={e => setCourseName(e.target.value)}
+              required
+              maxLength={120}
+              placeholder="Ej: 8°A - Tecnología"
+            />
           </div>
 
-          {materials && materials.length > 0 && (
+          {/* Recurrence */}
+          <div className="rounded-md border border-border p-3 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox checked={isRecurring} onCheckedChange={(v) => setIsRecurring(!!v)} />
+              <Repeat className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Reserva recurrente (semanal)</span>
+            </label>
+            {isRecurring && (
+              <div className="space-y-2 pl-6">
+                <Label className="text-xs">Repetir cada semana hasta</Label>
+                <Input
+                  type="date"
+                  value={recurrenceEndDate}
+                  onChange={e => setRecurrenceEndDate(e.target.value)}
+                  min={date}
+                  required={isRecurring}
+                />
+                {previewCount > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    Se crearán <span className="font-semibold text-foreground">{previewCount}</span> reservas (mismo día de la semana, mismos bloques). El admin podrá aprobarlas todas a la vez.
+                  </p>
+                )}
+                <p className="text-[11px] text-muted-foreground/80">
+                  Nota: con reservas recurrentes no se asignan materiales (solicítalos por separado si los necesitas).
+                </p>
+              </div>
+            )}
+          </div>
+
+          {!isRecurring && materials && materials.length > 0 && (
             <div className="space-y-2">
               <Label>Materiales adicionales (opcional)</Label>
               <div className="space-y-2 rounded-md border border-border p-3">
@@ -178,7 +293,13 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
 
           <div className="space-y-2">
             <Label>Observación (opcional)</Label>
-            <Textarea value={observation} onChange={e => setObservation(e.target.value)} placeholder="Actividad a realizar, requerimientos especiales..." rows={3} />
+            <Textarea
+              value={observation}
+              onChange={e => setObservation(e.target.value)}
+              placeholder="Actividad a realizar, requerimientos especiales..."
+              rows={3}
+              maxLength={500}
+            />
           </div>
           <Button type="submit" className="w-full" disabled={submitting}>
             {submitting ? "Enviando..." : "Enviar solicitud"}

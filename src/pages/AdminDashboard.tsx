@@ -1,6 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useReservations, useUpdateReservationStatus } from "@/hooks/useReservations";
+import {
+  useReservations,
+  useUpdateReservationStatus,
+  useReleaseReservation,
+  useApproveRecurrenceGroup,
+} from "@/hooks/useReservations";
 import { useMaterials, useCreateMaterial, useUpdateMaterial, useDeleteMaterial } from "@/hooks/useMaterials";
 import { useAdminProfiles } from "@/hooks/useProfiles";
 import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
@@ -14,15 +19,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { format, addWeeks, subWeeks, startOfWeek, endOfWeek } from "date-fns";
+import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   CalendarDays, ClipboardList, Package, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
-  Users, Image, KeyRound, History, Building2, Mail, LayoutGrid
+  Users, Image, KeyRound, History, Building2, Mail, LayoutGrid, Search, Repeat, Unlock, List, CalendarRange
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +37,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "bg-status-pending text-status-pending-foreground" },
   approved: { label: "Aprobada", className: "bg-status-approved text-status-approved-foreground" },
   rejected: { label: "Rechazada", className: "bg-status-rejected text-status-rejected-foreground" },
+  cancelled_by_admin: { label: "Liberada", className: "bg-muted text-muted-foreground" },
 };
 
 export default function AdminDashboard() {
@@ -89,21 +95,38 @@ export default function AdminDashboard() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [requestSearch, setRequestSearch] = useState("");
 
   // History filters
   const [historyDateFrom, setHistoryDateFrom] = useState("");
   const [historyDateTo, setHistoryDateTo] = useState("");
   const [historyStatus, setHistoryStatus] = useState<string>("all");
+  const [historySearch, setHistorySearch] = useState("");
+
+  // Calendar view mode
+  const [calendarView, setCalendarView] = useState<"week" | "month" | "list">("week");
+  const [monthDate, setMonthDate] = useState(new Date());
+
+  // Release dialog
+  const [releaseDialog, setReleaseDialog] = useState(false);
+  const [releaseId, setReleaseId] = useState("");
+  const [releaseReason, setReleaseReason] = useState("");
 
   // Reservations
   const { data: reservations, isLoading } = useReservations();
   const updateStatus = useUpdateReservationStatus();
+  const releaseReservation = useReleaseReservation();
+  const approveGroup = useApproveRecurrenceGroup();
 
   // Profiles
   const { data: profiles } = useAdminProfiles();
   const getTeacherName = (teacherId: string) => {
     const p = profiles?.find(p => p.user_id === teacherId);
     return p ? `${p.full_name} (${p.email})` : "—";
+  };
+  const getTeacherShortName = (teacherId: string) => {
+    const p = profiles?.find(p => p.user_id === teacherId);
+    return p?.full_name || "";
   };
 
   // Materials
@@ -225,25 +248,61 @@ export default function AdminDashboard() {
     },
   });
 
+  const matchesSearch = (r: any, q: string) => {
+    if (!q) return true;
+    const needle = q.toLowerCase().trim();
+    const teacher = getTeacherShortName(r.teacher_id).toLowerCase();
+    const email = profiles?.find(p => p.user_id === r.teacher_id)?.email?.toLowerCase() || "";
+    return (
+      r.course_name.toLowerCase().includes(needle) ||
+      teacher.includes(needle) ||
+      email.includes(needle) ||
+      r.reservation_date.includes(needle) ||
+      format(new Date(r.reservation_date + "T12:00:00"), "EEEE d MMMM yyyy", { locale: es }).toLowerCase().includes(needle)
+    );
+  };
+
   const filteredReservations = reservations
     ?.filter(r => statusFilter === "all" || r.status === statusFilter)
+    ?.filter(r => matchesSearch(r, requestSearch))
     ?.slice()
     ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  // History: past reservations with date + status filters
   const historyReservations = reservations
     ?.filter(r => {
       if (historyStatus !== "all" && r.status !== historyStatus) return false;
       if (historyDateFrom && r.reservation_date < historyDateFrom) return false;
       if (historyDateTo && r.reservation_date > historyDateTo) return false;
+      if (!matchesSearch(r, historySearch)) return false;
       return true;
     })
     ?.sort((a, b) => b.reservation_date.localeCompare(a.reservation_date));
+
+  // Group pending recurrent reservations by group id for batch approve
+  const pendingGroups = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    (reservations || []).forEach((r: any) => {
+      if (r.recurrence_group_id && r.status === "pending") {
+        groups[r.recurrence_group_id] = groups[r.recurrence_group_id] || [];
+        groups[r.recurrence_group_id].push(r);
+      }
+    });
+    return groups;
+  }, [reservations]);
 
   const handleApprove = async (id: string) => {
     try {
       await updateStatus.mutateAsync({ id, status: "approved" });
       toast({ title: "Reserva aprobada" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleApproveGroup = async (groupId: string) => {
+    try {
+      await approveGroup.mutateAsync(groupId);
+      toast({ title: "Grupo aprobado", description: "Todas las reservas pendientes del grupo fueron aprobadas." });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -259,6 +318,39 @@ export default function AdminDashboard() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
+
+  const handleRelease = async () => {
+    if (!releaseReason.trim()) {
+      toast({ title: "Motivo requerido", description: "Indica por qué liberas esta reserva.", variant: "destructive" });
+      return;
+    }
+    try {
+      await releaseReservation.mutateAsync({ id: releaseId, reason: releaseReason.trim() });
+      toast({ title: "Reserva liberada", description: "El bloque vuelve a estar disponible." });
+      setReleaseDialog(false);
+      setReleaseId("");
+      setReleaseReason("");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // Month view data
+  const monthStart = startOfMonth(monthDate);
+  const monthEnd = endOfMonth(monthDate);
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  const approvedByDay = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    (reservations || []).forEach((r: any) => {
+      if (r.status === "approved") {
+        map[r.reservation_date] = map[r.reservation_date] || [];
+        map[r.reservation_date].push(r);
+      }
+    });
+    return map;
+  }, [reservations]);
 
   const openMaterialForm = (mat?: any) => {
     if (mat) {
@@ -380,23 +472,61 @@ export default function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Label className="text-sm text-muted-foreground">Filtrar:</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="pending">Pendientes</SelectItem>
-                  <SelectItem value="approved">Aprobadas</SelectItem>
-                  <SelectItem value="rejected">Rechazadas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Card>
+              <CardContent className="p-3 flex flex-wrap items-end gap-3">
+                <div className="space-y-1 flex-1 min-w-[220px]">
+                  <Label className="text-xs text-muted-foreground">Buscar</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={requestSearch}
+                      onChange={e => setRequestSearch(e.target.value)}
+                      placeholder="Profesor, curso o fecha..."
+                      className="pl-8"
+                      maxLength={100}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Estado</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="pending">Pendientes</SelectItem>
+                      <SelectItem value="approved">Aprobadas</SelectItem>
+                      <SelectItem value="rejected">Rechazadas</SelectItem>
+                      <SelectItem value="cancelled_by_admin">Liberadas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pending recurrence groups: batch approve */}
+            {Object.keys(pendingGroups).length > 0 && (
+              <div className="space-y-2">
+                {Object.entries(pendingGroups).map(([groupId, items]) => (
+                  <Card key={groupId} className="border-primary/30 bg-primary/5">
+                    <CardContent className="p-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Repeat className="h-4 w-4 text-primary" />
+                        <span className="font-semibold text-foreground">{items[0].course_name}</span>
+                        <span className="text-muted-foreground">— {getTeacherShortName(items[0].teacher_id)} — {items.length} fechas pendientes</span>
+                      </div>
+                      <Button size="sm" onClick={() => handleApproveGroup(groupId)} disabled={approveGroup.isPending}>
+                        <Check className="h-4 w-4 mr-1" /> Aprobar todas
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             {isLoading ? (
               <p className="text-muted-foreground">Cargando...</p>
             ) : !filteredReservations?.length ? (
-              <Card><CardContent className="py-12 text-center text-muted-foreground">No hay solicitudes.</CardContent></Card>
+              <Card><CardContent className="py-12 text-center text-muted-foreground">No hay solicitudes que coincidan.</CardContent></Card>
             ) : (
               <div className="space-y-3">
                 {filteredReservations.map(r => {
@@ -404,33 +534,42 @@ export default function AdminDashboard() {
                   return (
                     <Card key={r.id} className="animate-fade-in">
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-1.5 flex-1">
-                            <div className="flex items-center gap-2">
-                              <BookOpen className="h-4 w-4 text-primary" />
+                        <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+                          <div className="space-y-1.5 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <BookOpen className="h-4 w-4 text-primary shrink-0" />
                               <span className="font-semibold text-foreground">{r.course_name}</span>
                               <Badge className={status.className}>{status.label}</Badge>
+                              {r.recurrence_group_id && (
+                                <Badge variant="outline" className="text-[10px] gap-1"><Repeat className="h-3 w-3" />Recurrente</Badge>
+                              )}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               <Clock className="h-3.5 w-3.5 inline mr-1" />
                               {format(new Date(r.reservation_date + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })} — Bloque {r.block_start}{r.block_end > r.block_start ? ` a ${r.block_end}` : ""}
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              Docente: {getTeacherName(r.teacher_id)}
-                            </div>
+                            <div className="text-sm text-muted-foreground">Docente: {getTeacherName(r.teacher_id)}</div>
                             {r.observation && <p className="text-sm text-muted-foreground">Obs: {r.observation}</p>}
                             {r.admin_notes && <p className="text-sm text-destructive">Nota admin: {r.admin_notes}</p>}
+                            {r.cancellation_reason && <p className="text-sm text-muted-foreground">Liberada: {r.cancellation_reason}</p>}
                           </div>
-                          {r.status === "pending" && (
-                            <div className="flex gap-1.5">
-                              <Button size="sm" variant="outline" className="text-status-available border-status-available hover:bg-status-available hover:text-status-available-foreground" onClick={() => handleApprove(r.id)}>
-                                <Check className="h-4 w-4" />
+                          <div className="flex gap-1.5 shrink-0">
+                            {r.status === "pending" && (
+                              <>
+                                <Button size="sm" variant="outline" className="text-status-available border-status-available hover:bg-status-available hover:text-status-available-foreground" onClick={() => handleApprove(r.id)}>
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => { setRejectId(r.id); setRejectDialog(true); }}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            {r.status === "approved" && (
+                              <Button size="sm" variant="outline" onClick={() => { setReleaseId(r.id); setReleaseReason(""); setReleaseDialog(true); }} title="Liberar reserva">
+                                <Unlock className="h-4 w-4 mr-1" /> Liberar
                               </Button>
-                              <Button size="sm" variant="outline" className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => { setRejectId(r.id); setRejectDialog(true); }}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -445,6 +584,19 @@ export default function AdminDashboard() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex flex-wrap items-end gap-3">
+                  <div className="space-y-1 flex-1 min-w-[220px]">
+                    <Label className="text-xs text-muted-foreground">Buscar</Label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={historySearch}
+                        onChange={e => setHistorySearch(e.target.value)}
+                        placeholder="Profesor, curso o fecha..."
+                        className="pl-8"
+                        maxLength={100}
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Desde</Label>
                     <Input type="date" value={historyDateFrom} onChange={e => setHistoryDateFrom(e.target.value)} className="w-40" />
@@ -462,10 +614,11 @@ export default function AdminDashboard() {
                         <SelectItem value="pending">Pendientes</SelectItem>
                         <SelectItem value="approved">Aprobadas</SelectItem>
                         <SelectItem value="rejected">Rechazadas</SelectItem>
+                        <SelectItem value="cancelled_by_admin">Liberadas</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => { setHistoryDateFrom(""); setHistoryDateTo(""); setHistoryStatus("all"); }}>
+                  <Button variant="outline" size="sm" onClick={() => { setHistoryDateFrom(""); setHistoryDateTo(""); setHistoryStatus("all"); setHistorySearch(""); }}>
                     Limpiar
                   </Button>
                 </div>
@@ -486,7 +639,7 @@ export default function AdminDashboard() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1 flex-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <BookOpen className="h-4 w-4 text-primary" />
                               <span className="font-semibold text-foreground">{r.course_name}</span>
                               <Badge className={status.className}>{status.label}</Badge>
@@ -495,11 +648,10 @@ export default function AdminDashboard() {
                               <Clock className="h-3.5 w-3.5 inline mr-1" />
                               {format(new Date(r.reservation_date + "T12:00:00"), "EEEE d 'de' MMMM yyyy", { locale: es })} — Bloque {r.block_start}{r.block_end > r.block_start ? ` a ${r.block_end}` : ""}
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              Docente: {getTeacherName(r.teacher_id)}
-                            </div>
+                            <div className="text-sm text-muted-foreground">Docente: {getTeacherName(r.teacher_id)}</div>
                             {r.observation && <p className="text-sm text-muted-foreground">Obs: {r.observation}</p>}
                             {r.admin_notes && <p className="text-sm text-destructive">Nota: {r.admin_notes}</p>}
+                            {r.cancellation_reason && <p className="text-sm text-muted-foreground">Liberada: {r.cancellation_reason}</p>}
                           </div>
                         </div>
                       </CardContent>
@@ -511,19 +663,118 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="schedule" className="space-y-4 mt-4">
-            <div className="flex items-center justify-between bg-card rounded-xl border border-border px-4 py-2.5 shadow-sm">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(subWeeks(currentDate, 1))}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-semibold text-foreground">
-                {format(weekStart, "d MMM", { locale: es })} — {format(weekEnd, "d MMM yyyy", { locale: es })}
-              </span>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(addWeeks(currentDate, 1))}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-card rounded-xl border border-border px-3 py-2 shadow-sm">
+              <div className="flex items-center gap-1">
+                <Button variant={calendarView === "week" ? "default" : "ghost"} size="sm" onClick={() => setCalendarView("week")}>
+                  <CalendarDays className="h-4 w-4 mr-1" /> Semana
+                </Button>
+                <Button variant={calendarView === "month" ? "default" : "ghost"} size="sm" onClick={() => setCalendarView("month")}>
+                  <CalendarRange className="h-4 w-4 mr-1" /> Mes
+                </Button>
+                <Button variant={calendarView === "list" ? "default" : "ghost"} size="sm" onClick={() => setCalendarView("list")}>
+                  <List className="h-4 w-4 mr-1" /> Lista
+                </Button>
+              </div>
+              {calendarView === "week" && (
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(subWeeks(currentDate, 1))}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-semibold text-foreground">
+                    {format(weekStart, "d MMM", { locale: es })} — {format(weekEnd, "d MMM yyyy", { locale: es })}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(addWeeks(currentDate, 1))}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {calendarView === "month" && (
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMonthDate(subMonths(monthDate, 1))}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-semibold text-foreground capitalize">
+                    {format(monthDate, "MMMM yyyy", { locale: es })}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMonthDate(addMonths(monthDate, 1))}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
-            <WeeklySchedule currentDate={currentDate} />
+
+            {calendarView === "week" && <WeeklySchedule currentDate={currentDate} />}
+
+            {calendarView === "month" && (
+              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                <div className="grid grid-cols-7 bg-muted/60 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map(d => (
+                    <div key={d} className="px-2 py-2 text-center border-r last:border-r-0 border-border">{d}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7">
+                  {monthDays.map(day => {
+                    const ds = format(day, "yyyy-MM-dd");
+                    const inMonth = isSameMonth(day, monthDate);
+                    const today = isSameDay(day, new Date());
+                    const items = approvedByDay[ds] || [];
+                    return (
+                      <div
+                        key={ds}
+                        className={`min-h-[88px] border-r border-b border-border last:border-r-0 p-1.5 ${inMonth ? "" : "bg-muted/20 text-muted-foreground/50"} ${today ? "bg-primary/5" : ""}`}
+                      >
+                        <div className={`text-[11px] font-semibold mb-1 ${today ? "text-primary" : ""}`}>{format(day, "d")}</div>
+                        <div className="space-y-0.5">
+                          {items.slice(0, 3).map((r: any) => (
+                            <div key={r.id} className="text-[10px] bg-status-approved/15 text-foreground rounded px-1 py-0.5 truncate" title={`${r.course_name} — ${getTeacherShortName(r.teacher_id)}`}>
+                              B{r.block_start}{r.block_end > r.block_start ? `-${r.block_end}` : ""} {r.course_name}
+                            </div>
+                          ))}
+                          {items.length > 3 && (
+                            <div className="text-[10px] text-muted-foreground">+{items.length - 3} más</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {calendarView === "list" && (
+              <Card>
+                <CardContent className="p-0">
+                  {(() => {
+                    const upcoming = (reservations || [])
+                      .filter((r: any) => r.status === "approved" && r.reservation_date >= format(new Date(), "yyyy-MM-dd"))
+                      .sort((a: any, b: any) => a.reservation_date.localeCompare(b.reservation_date) || a.block_start - b.block_start);
+                    if (!upcoming.length) {
+                      return <div className="py-12 text-center text-muted-foreground">No hay reservas aprobadas próximas.</div>;
+                    }
+                    return (
+                      <div className="divide-y divide-border">
+                        {upcoming.map((r: any) => (
+                          <div key={r.id} className="px-4 py-3 flex items-center gap-3">
+                            <div className="text-sm font-semibold text-foreground w-32 shrink-0">
+                              {format(parseISO(r.reservation_date), "EEE d MMM", { locale: es })}
+                            </div>
+                            <div className="text-xs text-muted-foreground w-24 shrink-0">
+                              Bloque {r.block_start}{r.block_end > r.block_start ? `-${r.block_end}` : ""}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-foreground truncate">{r.course_name}</div>
+                              <div className="text-xs text-muted-foreground truncate">{getTeacherShortName(r.teacher_id)}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
+
 
           <TabsContent value="materials" className="space-y-4">
             <div className="flex justify-end">
