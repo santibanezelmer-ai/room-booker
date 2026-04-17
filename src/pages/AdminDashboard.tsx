@@ -95,21 +95,38 @@ export default function AdminDashboard() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [requestSearch, setRequestSearch] = useState("");
 
   // History filters
   const [historyDateFrom, setHistoryDateFrom] = useState("");
   const [historyDateTo, setHistoryDateTo] = useState("");
   const [historyStatus, setHistoryStatus] = useState<string>("all");
+  const [historySearch, setHistorySearch] = useState("");
+
+  // Calendar view mode
+  const [calendarView, setCalendarView] = useState<"week" | "month" | "list">("week");
+  const [monthDate, setMonthDate] = useState(new Date());
+
+  // Release dialog
+  const [releaseDialog, setReleaseDialog] = useState(false);
+  const [releaseId, setReleaseId] = useState("");
+  const [releaseReason, setReleaseReason] = useState("");
 
   // Reservations
   const { data: reservations, isLoading } = useReservations();
   const updateStatus = useUpdateReservationStatus();
+  const releaseReservation = useReleaseReservation();
+  const approveGroup = useApproveRecurrenceGroup();
 
   // Profiles
   const { data: profiles } = useAdminProfiles();
   const getTeacherName = (teacherId: string) => {
     const p = profiles?.find(p => p.user_id === teacherId);
     return p ? `${p.full_name} (${p.email})` : "—";
+  };
+  const getTeacherShortName = (teacherId: string) => {
+    const p = profiles?.find(p => p.user_id === teacherId);
+    return p?.full_name || "";
   };
 
   // Materials
