@@ -1,35 +1,41 @@
 import { format, startOfWeek, addDays, getISODay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
-import { useReservations } from "@/hooks/useReservations";
-import { useProfiles } from "@/hooks/useProfiles";
+import { useReservations, usePublicReservations } from "@/hooks/useReservations";
+import { useProfiles, usePublicTeachers } from "@/hooks/useProfiles";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const STATUS_STYLES: Record<string, string> = {
   approved: "bg-status-approved text-status-approved-foreground",
   pending: "bg-status-pending text-status-pending-foreground",
   rejected: "bg-status-rejected text-status-rejected-foreground",
+  cancelled_by_admin: "bg-muted text-muted-foreground",
 };
 
 const STATUS_LABELS: Record<string, string> = {
   approved: "Aprobado",
   pending: "Pendiente",
   rejected: "Rechazado",
+  cancelled_by_admin: "Liberado",
 };
 
 interface WeeklyScheduleProps {
   currentDate: Date;
   onSlotClick?: (date: string, blockNumber: number) => void;
+  publicMode?: boolean;
 }
 
-export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklyScheduleProps) {
+export default function WeeklySchedule({ currentDate, onSlotClick, publicMode = false }: WeeklyScheduleProps) {
   const { data: blocks, isLoading: loadingBlocks } = useScheduleBlocks();
-  const { data: profiles } = useProfiles();
+  const { data: privateProfiles } = useProfiles();
+  const { data: publicProfiles } = usePublicTeachers();
+  const profiles = publicMode ? publicProfiles : privateProfiles;
+  const isMobile = useIsMobile();
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  // Monday to Friday (5 days)
   const weekDays = Array.from({ length: 5 }, (_, i) => addDays(weekStart, i));
 
   const dateRange = {
@@ -37,19 +43,22 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
     to: format(weekDays[4], "yyyy-MM-dd"),
   };
 
-  const { data: reservations, isLoading: loadingRes } = useReservations(dateRange);
+  const privateRes = useReservations(publicMode ? undefined : dateRange);
+  const publicRes = usePublicReservations(publicMode ? dateRange : undefined);
+  const reservations = publicMode ? publicRes.data : privateRes.data;
+  const loadingRes = publicMode ? publicRes.isLoading : privateRes.isLoading;
 
-  // All unique block numbers across all days
   const allBlocks = blocks || [];
 
   const getTeacherName = (teacherId: string) => {
-    const p = profiles?.find(pr => pr.user_id === teacherId);
+    const p = profiles?.find((pr: any) => pr.user_id === teacherId);
     return p?.full_name || "";
   };
 
   const getReservation = (date: string, blockNum: number) => {
     return reservations?.find(
-      (r) => r.reservation_date === date && r.block_start <= blockNum && r.block_end >= blockNum
+      (r: any) => r.reservation_date === date && r.block_start <= blockNum && r.block_end >= blockNum
+        && r.status !== "cancelled_by_admin"
     );
   };
 
@@ -58,6 +67,77 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
 
   if (loadingBlocks) return <Skeleton className="h-96 w-full rounded-xl" />;
 
+  // ===== MOBILE: stacked day cards =====
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {weekDays.map((day) => {
+          const dateStr = format(day, "yyyy-MM-dd");
+          const dayOfWeek = getISODay(day);
+          const dayBlocks = allBlocks.filter((b) => b.available_days?.includes(dayOfWeek) ?? true);
+
+          return (
+            <div
+              key={dateStr}
+              className={`rounded-xl border bg-card shadow-sm overflow-hidden ${isToday(day) ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}
+            >
+              <div className={`px-3 py-2 border-b border-border ${isToday(day) ? "bg-primary/10" : "bg-muted/40"}`}>
+                <div className={`font-semibold text-sm ${isToday(day) ? "text-primary" : "text-foreground"}`}>
+                  {format(day, "EEEE d 'de' MMMM", { locale: es })}
+                </div>
+              </div>
+              <div className="divide-y divide-border">
+                {dayBlocks.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-xs text-muted-foreground">Sin bloques disponibles</div>
+                ) : (
+                  dayBlocks.map((block) => {
+                    const reservation = getReservation(dateStr, block.block_number);
+                    return (
+                      <div
+                        key={block.block_number}
+                        className={`px-3 py-2.5 flex items-center gap-3 ${!reservation && !publicMode ? "active:bg-primary/5 cursor-pointer" : ""}`}
+                        onClick={() => !reservation && !publicMode && onSlotClick?.(dateStr, block.block_number)}
+                      >
+                        <div className="shrink-0 w-20">
+                          <div className="text-xs font-semibold text-foreground">B{block.block_number}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {formatTime(block.start_time)}–{formatTime(block.end_time)}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {loadingRes ? (
+                            <Skeleton className="h-6 w-full rounded" />
+                          ) : reservation ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <Badge className={`text-[9px] px-1 py-0 ${STATUS_STYLES[reservation.status]}`}>
+                                  {STATUS_LABELS[reservation.status] || reservation.status}
+                                </Badge>
+                                <span className="text-xs font-medium text-foreground truncate">{reservation.course_name}</span>
+                              </div>
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {getTeacherName(reservation.teacher_id)}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-status-available font-medium">
+                              {publicMode ? "Disponible" : "Disponible — toca para reservar"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ===== DESKTOP: table =====
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
       <table className="w-full border-collapse text-sm">
@@ -90,7 +170,7 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
               </td>
               {weekDays.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
-                const dayOfWeek = getISODay(day); // 1=Mon, 5=Fri
+                const dayOfWeek = getISODay(day);
                 const isAvailable = block.available_days?.includes(dayOfWeek) ?? true;
 
                 if (!isAvailable) {
@@ -105,16 +185,15 @@ export default function WeeklySchedule({ currentDate, onSlotClick }: WeeklySched
                 }
 
                 const reservation = getReservation(dateStr, block.block_number);
+                const clickable = !reservation && !publicMode;
 
                 return (
                   <td
                     key={dateStr}
                     className={`border-b border-r last:border-r-0 border-border px-2 py-2 text-center transition-all duration-150 ${
-                      !reservation
-                        ? "hover:bg-primary/5 cursor-pointer group"
-                        : ""
+                      clickable ? "hover:bg-primary/5 cursor-pointer group" : ""
                     } ${isToday(day) ? "bg-primary/[0.03]" : ""}`}
-                    onClick={() => !reservation && onSlotClick?.(dateStr, block.block_number)}
+                    onClick={() => clickable && onSlotClick?.(dateStr, block.block_number)}
                   >
                     {loadingRes ? (
                       <Skeleton className="h-8 w-full rounded-md" />
