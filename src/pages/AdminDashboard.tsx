@@ -113,6 +113,11 @@ export default function AdminDashboard() {
   const [releaseId, setReleaseId] = useState("");
   const [releaseReason, setReleaseReason] = useState("");
 
+  // Export PDF dialog
+  const [exportPdfDialog, setExportPdfDialog] = useState(false);
+  const [exportMonth, setExportMonth] = useState((new Date().getMonth() + 1).toString());
+  const [exportYear, setExportYear] = useState(new Date().getFullYear().toString());
+
   // Reservations
   const { data: reservations, isLoading } = useReservations();
   const updateStatus = useUpdateReservationStatus();
