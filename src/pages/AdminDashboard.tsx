@@ -27,11 +27,12 @@ import { es } from "date-fns/locale";
 import {
   CalendarDays, ClipboardList, Package, LogOut, Monitor,
   Check, X, ChevronLeft, ChevronRight, Plus, Trash2, Edit, Clock, BookOpen,
-  Users, Image, KeyRound, History, Building2, Mail, LayoutGrid, Search, Repeat, Unlock, List, CalendarRange
+  Users, Image, KeyRound, History, Building2, Mail, LayoutGrid, Search, Repeat, Unlock, List, CalendarRange, FileDown
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import ThemeToggle from "@/components/ThemeToggle";
+import { exportMonthlyCalendarPdf } from "@/lib/exportMonthPdf";
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "bg-status-pending text-status-pending-foreground" },
