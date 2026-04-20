@@ -683,6 +683,19 @@ export default function AdminDashboard() {
                 <Button variant={calendarView === "list" ? "default" : "ghost"} size="sm" onClick={() => setCalendarView("list")}>
                   <List className="h-4 w-4 mr-1" /> Lista
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setExportMonth((monthDate.getMonth() + 1).toString());
+                    setExportYear(monthDate.getFullYear().toString());
+                    setExportPdfDialog(true);
+                  }}
+                  className="ml-1"
+                  title="Exportar calendario mensual a PDF"
+                >
+                  <FileDown className="h-4 w-4 mr-1" /> PDF mensual
+                </Button>
               </div>
               {calendarView === "week" && (
                 <div className="flex items-center gap-2">
