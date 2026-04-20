@@ -1087,6 +1087,70 @@ export default function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Export monthly PDF dialog */}
+      <Dialog open={exportPdfDialog} onOpenChange={setExportPdfDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Exportar calendario mensual</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Se generará un PDF con todas las reservas aprobadas del mes seleccionado, incluyendo curso, docente y objetivo de la clase.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Mes</Label>
+                <Select value={exportMonth} onValueChange={setExportMonth}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const m = (i + 1).toString();
+                      const label = format(new Date(2000, i, 1), "MMMM", { locale: es });
+                      return (
+                        <SelectItem key={m} value={m}>
+                          {label.charAt(0).toUpperCase() + label.slice(1)}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Año</Label>
+                <Select value={exportYear} onValueChange={setExportYear}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 6 }).map((_, i) => {
+                      const y = (new Date().getFullYear() - 2 + i).toString();
+                      return <SelectItem key={y} value={y}>{y}</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExportPdfDialog(false)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                const target = new Date(parseInt(exportYear), parseInt(exportMonth) - 1, 1);
+                exportMonthlyCalendarPdf({
+                  monthDate: target,
+                  reservations: (reservations || []) as any,
+                  blocks: (scheduleBlocks || []) as any,
+                  getTeacherName: getTeacherShortName,
+                  establishmentName: estSettings?.name || undefined,
+                });
+                toast({ title: "PDF generado", description: "Se descargó el calendario mensual." });
+                setExportPdfDialog(false);
+              }}
+            >
+              <FileDown className="h-4 w-4 mr-1" /> Descargar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
