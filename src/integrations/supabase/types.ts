@@ -151,6 +151,7 @@ export type Database = {
           block_end: number
           block_start: number
           cancellation_reason: string | null
+          class_objective: string
           course_name: string
           created_at: string
           id: string
@@ -166,6 +167,7 @@ export type Database = {
           block_end: number
           block_start: number
           cancellation_reason?: string | null
+          class_objective: string
           course_name: string
           created_at?: string
           id?: string
@@ -181,6 +183,7 @@ export type Database = {
           block_end?: number
           block_start?: number
           cancellation_reason?: string | null
+          class_objective?: string
           course_name?: string
           created_at?: string
           id?: string
