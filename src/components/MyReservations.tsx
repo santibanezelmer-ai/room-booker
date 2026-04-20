@@ -68,6 +68,7 @@ export default function MyReservations() {
   const [editBlockStart, setEditBlockStart] = useState("1");
   const [editBlockEnd, setEditBlockEnd] = useState("1");
   const [editCourse, setEditCourse] = useState("");
+  const [editObjective, setEditObjective] = useState("");
   const [editObs, setEditObs] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -77,12 +78,17 @@ export default function MyReservations() {
       setEditBlockStart(editing.block_start.toString());
       setEditBlockEnd(editing.block_end.toString());
       setEditCourse(editing.course_name);
+      setEditObjective(editing.class_objective || "");
       setEditObs(editing.observation || "");
     }
   }, [editing]);
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editObjective.trim()) {
+      toast({ title: "Objetivo requerido", description: "Debes registrar el objetivo de la clase.", variant: "destructive" });
+      return;
+    }
     try {
       await updateMine.mutateAsync({
         id: editing.id,
@@ -91,6 +97,7 @@ export default function MyReservations() {
           block_start: parseInt(editBlockStart),
           block_end: parseInt(editBlockEnd),
           course_name: editCourse,
+          class_objective: editObjective.trim(),
           observation: editObs || null,
         },
       });
@@ -175,6 +182,12 @@ export default function MyReservations() {
                         {r.block_end > r.block_start ? ` a ${r.block_end}` : ""}
                       </span>
                     </div>
+                    {r.class_objective && (
+                      <div className="flex items-start gap-2 text-sm text-foreground/80">
+                        <BookOpen className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary/70" />
+                        <span><span className="font-medium">Objetivo:</span> {r.class_objective}</span>
+                      </div>
+                    )}
                     {r.observation && (
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <MessageSquare className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -284,6 +297,16 @@ export default function MyReservations() {
                 onChange={(e) => setEditCourse(e.target.value)}
                 required
                 maxLength={120}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Objetivo de la clase</Label>
+              <Textarea
+                value={editObjective}
+                onChange={(e) => setEditObjective(e.target.value)}
+                required
+                rows={2}
+                maxLength={500}
               />
             </div>
             <div className="space-y-2">

@@ -549,6 +549,9 @@ export default function AdminDashboard() {
                               {format(new Date(r.reservation_date + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })} — Bloque {r.block_start}{r.block_end > r.block_start ? ` a ${r.block_end}` : ""}
                             </div>
                             <div className="text-sm text-muted-foreground">Docente: {getTeacherName(r.teacher_id)}</div>
+                            {r.class_objective && (
+                              <p className="text-sm text-foreground/80"><span className="font-medium">Objetivo:</span> {r.class_objective}</p>
+                            )}
                             {r.observation && <p className="text-sm text-muted-foreground">Obs: {r.observation}</p>}
                             {r.admin_notes && <p className="text-sm text-destructive">Nota admin: {r.admin_notes}</p>}
                             {r.cancellation_reason && <p className="text-sm text-muted-foreground">Liberada: {r.cancellation_reason}</p>}
@@ -1028,6 +1031,41 @@ export default function AdminDashboard() {
             </div>
             <Button type="submit" className="w-full">{editBlock ? "Actualizar" : "Crear"}</Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Release reservation dialog */}
+      <Dialog open={releaseDialog} onOpenChange={(o) => { setReleaseDialog(o); if (!o) { setReleaseId(""); setReleaseReason(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Liberar Reserva</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              La reserva se marcará como liberada y el bloque volverá a estar disponible. El docente podrá ver el motivo.
+            </p>
+            <div className="space-y-2">
+              <Label>Motivo de la liberación</Label>
+              <Textarea
+                value={releaseReason}
+                onChange={(e) => setReleaseReason(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="Ej: Suspensión de clases, mantenimiento de la sala, etc."
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReleaseDialog(false)}>Cancelar</Button>
+            <Button
+              onClick={handleRelease}
+              disabled={releaseReservation.isPending || !releaseReason.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {releaseReservation.isPending ? "Liberando..." : "Confirmar liberación"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

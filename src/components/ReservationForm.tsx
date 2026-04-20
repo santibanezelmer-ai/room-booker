@@ -36,6 +36,7 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
   const [blockStart, setBlockStart] = useState(preselectedBlock?.toString() || "1");
   const [blockEnd, setBlockEnd] = useState(preselectedBlock?.toString() || "1");
   const [courseName, setCourseName] = useState("");
+  const [classObjective, setClassObjective] = useState("");
   const [observation, setObservation] = useState("");
   const [selectedMaterials, setSelectedMaterials] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -101,6 +102,7 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
 
   const resetForm = () => {
     setCourseName("");
+    setClassObjective("");
     setObservation("");
     setSelectedMaterials({});
     setIsRecurring(false);
@@ -111,6 +113,14 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
     e.preventDefault();
     if (courseName.trim().length === 0 || courseName.length > 120) {
       toast({ title: "Curso inválido", description: "Máximo 120 caracteres.", variant: "destructive" });
+      return;
+    }
+    if (classObjective.trim().length === 0) {
+      toast({ title: "Objetivo requerido", description: "Debes registrar el objetivo de la clase.", variant: "destructive" });
+      return;
+    }
+    if (classObjective.length > 500) {
+      toast({ title: "Objetivo muy largo", description: "Máximo 500 caracteres.", variant: "destructive" });
       return;
     }
     if (observation.length > 500) {
@@ -139,6 +149,7 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
           block_start: parseInt(blockStart),
           block_end: parseInt(blockEnd),
           course_name: courseName.trim(),
+          class_objective: classObjective.trim(),
           observation: observation || undefined,
         });
         toast({
@@ -151,6 +162,7 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
           block_start: parseInt(blockStart),
           block_end: parseInt(blockEnd),
           course_name: courseName.trim(),
+          class_objective: classObjective.trim(),
           observation: observation || undefined,
         });
 
@@ -232,6 +244,18 @@ export default function ReservationForm({ open, onOpenChange, preselectedDate, p
               required
               maxLength={120}
               placeholder="Ej: 8°A - Tecnología"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Objetivo de la clase</Label>
+            <Textarea
+              value={classObjective}
+              onChange={e => setClassObjective(e.target.value)}
+              required
+              maxLength={500}
+              rows={2}
+              placeholder="Ej: Reconocer las partes del computador y su función"
             />
           </div>
 
