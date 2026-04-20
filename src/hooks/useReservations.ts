@@ -52,6 +52,7 @@ export function useCreateReservation() {
       block_start: number;
       block_end: number;
       course_name: string;
+      class_objective: string;
       observation?: string;
       recurrence_group_id?: string | null;
     }) => {
@@ -79,6 +80,7 @@ export function useCreateRecurringReservations() {
       block_start: number;
       block_end: number;
       course_name: string;
+      class_objective: string;
       observation?: string;
     }) => {
       const groupId = crypto.randomUUID();
@@ -88,6 +90,7 @@ export function useCreateRecurringReservations() {
         block_start: payload.block_start,
         block_end: payload.block_end,
         course_name: payload.course_name,
+        class_objective: payload.class_objective,
         observation: payload.observation || null,
         recurrence_group_id: groupId,
       }));
@@ -181,6 +184,7 @@ export function useUpdateOwnReservation() {
         block_start: number;
         block_end: number;
         course_name: string;
+        class_objective: string;
         observation: string | null;
       }>;
     }) => {
