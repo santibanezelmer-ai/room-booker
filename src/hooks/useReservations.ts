@@ -29,7 +29,7 @@ export function usePublicReservations(dateRange?: { from: string; to: string }) 
     queryFn: async () => {
       let query = supabase
         .from("reservations")
-        .select("id, reservation_date, block_start, block_end, course_name, observation, status, teacher_id, cancellation_reason");
+        .select("id, reservation_date, block_start, block_end, course_name, class_objective, observation, status, teacher_id, cancellation_reason");
 
       if (dateRange) {
         query = query.gte("reservation_date", dateRange.from).lte("reservation_date", dateRange.to);
