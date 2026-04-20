@@ -210,9 +210,12 @@ export default function WeeklySchedule({ currentDate, onSlotClick, publicMode = 
                             </div>
                           </div>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-[220px]">
+                        <TooltipContent side="top" className="max-w-[260px]">
                           <p className="font-semibold">{reservation.course_name}</p>
                           <p className="text-xs">{getTeacherName(reservation.teacher_id)}</p>
+                          {reservation.class_objective && (
+                            <p className="text-xs mt-1"><span className="font-medium">Objetivo:</span> {reservation.class_objective}</p>
+                          )}
                           {reservation.observation && <p className="text-xs mt-1 text-muted-foreground">{reservation.observation}</p>}
                         </TooltipContent>
                       </Tooltip>
