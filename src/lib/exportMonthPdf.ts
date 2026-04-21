@@ -52,6 +52,46 @@ export function exportMonthlyCalendarPdf({
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
 
+  // Add logo if available
+  if (logoUrl) {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = logoUrl;
+      // Wait for image to load synchronously using a data URL approach
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        // Load image and convert to data URL
+        const loadImage = (url: string): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+              canvas.width = img.width;
+              canvas.height = img.height;
+              ctx.drawImage(img, 0, 0);
+              resolve(canvas.toDataURL("image/png"));
+            };
+            img.onerror = reject;
+            img.src = url;
+          });
+        };
+        // Use the logo - we'll add it asynchronously
+        loadImage(logoUrl).then((dataUrl) => {
+          const imgProps = doc.getImageProperties(dataUrl);
+          const imgWidth = 20;
+          const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+          doc.addImage(dataUrl, "PNG", 10, 5, imgWidth, imgHeight);
+        }).catch(() => {
+          // Silently fail if logo can't be loaded
+        });
+      }
+    } catch {
+      // Silently fail if logo can't be processed
+    }
+  }
+
   const monthLabel = format(monthDate, "MMMM yyyy", { locale: es });
   const title = establishmentName || "Calendario de Reservas";
 
