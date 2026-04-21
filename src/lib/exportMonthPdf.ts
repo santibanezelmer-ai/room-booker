@@ -34,6 +34,7 @@ interface ExportOptions {
   blocks: ScheduleBlock[];
   getTeacherName: (teacherId: string) => string;
   establishmentName?: string;
+  logoUrl?: string | null;
 }
 
 /**
@@ -46,6 +47,7 @@ export function exportMonthlyCalendarPdf({
   blocks,
   getTeacherName,
   establishmentName,
+  logoUrl,
 }: ExportOptions) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
