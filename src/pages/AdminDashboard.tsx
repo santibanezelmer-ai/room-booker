@@ -1133,14 +1133,15 @@ export default function AdminDashboard() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setExportPdfDialog(false)}>Cancelar</Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 const target = new Date(parseInt(exportYear), parseInt(exportMonth) - 1, 1);
-                exportMonthlyCalendarPdf({
+                await exportMonthlyCalendarPdf({
                   monthDate: target,
                   reservations: (reservations || []) as any,
                   blocks: (scheduleBlocks || []) as any,
                   getTeacherName: getTeacherShortName,
                   establishmentName: estSettings?.name || undefined,
+                  logoUrl: estSettings?.logo_url,
                 });
                 toast({ title: "PDF generado", description: "Se descargó el calendario mensual." });
                 setExportPdfDialog(false);
