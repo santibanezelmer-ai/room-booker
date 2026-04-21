@@ -38,10 +38,36 @@ interface ExportOptions {
 }
 
 /**
+ * Load an image from URL and convert to base64 data URL
+ */
+function loadImageAsDataUrl(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } else {
+        resolve(null);
+      }
+    };
+    
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+/**
  * Exports the monthly calendar as a landscape PDF, one page per week.
  * Each cell shows: course - teacher - objective for every reservation that day.
  */
-export function exportMonthlyCalendarPdf({
+export async function exportMonthlyCalendarPdf({
   monthDate,
   reservations,
   blocks,
@@ -52,44 +78,10 @@ export function exportMonthlyCalendarPdf({
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Add logo if available
+  // Load and add logo if available
+  let logoDataUrl: string | null = null;
   if (logoUrl) {
-    try {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = logoUrl;
-      // Wait for image to load synchronously using a data URL approach
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        // Load image and convert to data URL
-        const loadImage = (url: string): Promise<string> => {
-          return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.onload = () => {
-              canvas.width = img.width;
-              canvas.height = img.height;
-              ctx.drawImage(img, 0, 0);
-              resolve(canvas.toDataURL("image/png"));
-            };
-            img.onerror = reject;
-            img.src = url;
-          });
-        };
-        // Use the logo - we'll add it asynchronously
-        loadImage(logoUrl).then((dataUrl) => {
-          const imgProps = doc.getImageProperties(dataUrl);
-          const imgWidth = 20;
-          const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-          doc.addImage(dataUrl, "PNG", 10, 5, imgWidth, imgHeight);
-        }).catch(() => {
-          // Silently fail if logo can't be loaded
-        });
-      }
-    } catch {
-      // Silently fail if logo can't be processed
-    }
+    logoDataUrl = await loadImageAsDataUrl(logoUrl);
   }
 
   const monthLabel = format(monthDate, "MMMM yyyy", { locale: es });
@@ -120,17 +112,32 @@ export function exportMonthlyCalendarPdf({
     weeks.push(allDays.slice(i, i + 7));
   }
 
-  // Header
+  // Header with logo
+  let startY = 14;
+  
+  // Add logo if loaded
+  if (logoDataUrl) {
+    try {
+      const imgProps = doc.getImageProperties(logoDataUrl);
+      const logoWidth = 25;
+      const logoHeight = (imgProps.height * logoWidth) / imgProps.width;
+      doc.addImage(logoDataUrl, "PNG", 10, 5, logoWidth, logoHeight);
+      startY = Math.max(startY, 5 + logoHeight + 8);
+    } catch {
+      // Silently fail if logo can't be added
+    }
+  }
+
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text(title, pageWidth / 2, 14, { align: "center" });
+  doc.text(title, pageWidth / 2, startY, { align: "center" });
 
   doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
   doc.text(
     `Calendario mensual — ${monthLabel.charAt(0).toUpperCase()}${monthLabel.slice(1)}`,
     pageWidth / 2,
-    21,
+    startY + 7,
     { align: "center" }
   );
 
@@ -139,7 +146,7 @@ export function exportMonthlyCalendarPdf({
   doc.text(
     `Generado el ${format(new Date(), "d 'de' MMMM yyyy, HH:mm", { locale: es })}`,
     pageWidth / 2,
-    26,
+    startY + 12,
     { align: "center" }
   );
   doc.setTextColor(0);
@@ -176,7 +183,7 @@ export function exportMonthlyCalendarPdf({
   );
 
   autoTable(doc, {
-    startY: 32,
+    startY: startY + 18,
     head,
     body,
     styles: {
@@ -201,7 +208,7 @@ export function exportMonthlyCalendarPdf({
       },
       {}
     ),
-    margin: { top: 32, left: 10, right: 10, bottom: 12 },
+    margin: { top: startY + 18, left: 10, right: 10, bottom: 12 },
     didParseCell: (data) => {
       if (data.section !== "body") return;
       const week = weeks[data.row.index];
