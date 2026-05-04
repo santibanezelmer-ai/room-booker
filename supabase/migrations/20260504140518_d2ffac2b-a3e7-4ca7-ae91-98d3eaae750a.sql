@@ -1,0 +1,2 @@
+ALTER TABLE public.reservations DROP CONSTRAINT reservations_status_check;
+ALTER TABLE public.reservations ADD CONSTRAINT reservations_status_check CHECK (status = ANY (ARRAY['pending','approved','rejected','cancelled_by_admin']));
