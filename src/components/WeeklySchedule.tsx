@@ -117,7 +117,7 @@ export default function WeeklySchedule({ currentDate, onSlotClick, publicMode = 
                                 <span className="text-xs font-medium text-foreground truncate">{reservation.course_name}</span>
                               </div>
                               <div className="text-[11px] text-muted-foreground truncate">
-                                {getTeacherName(reservation.teacher_id)}
+                                {getTeacherName(reservation)}
                               </div>
                             </div>
                           ) : (
@@ -207,13 +207,13 @@ export default function WeeklySchedule({ currentDate, onSlotClick, publicMode = 
                             </Badge>
                             <div className="text-xs text-foreground font-medium truncate leading-tight">{reservation.course_name}</div>
                             <div className="text-[10px] text-muted-foreground truncate leading-tight">
-                              {getTeacherName(reservation.teacher_id)}
+                              {getTeacherName(reservation)}
                             </div>
                           </div>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-[260px]">
                           <p className="font-semibold">{reservation.course_name}</p>
-                          <p className="text-xs">{getTeacherName(reservation.teacher_id)}</p>
+                          <p className="text-xs">{getTeacherName(reservation)}</p>
                           {reservation.class_objective && (
                             <p className="text-xs mt-1"><span className="font-medium">Objetivo:</span> {reservation.class_objective}</p>
                           )}
