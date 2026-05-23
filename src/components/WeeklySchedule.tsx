@@ -50,8 +50,9 @@ export default function WeeklySchedule({ currentDate, onSlotClick, publicMode = 
 
   const allBlocks = blocks || [];
 
-  const getTeacherName = (teacherId: string) => {
-    const p = profiles?.find((pr: any) => pr.user_id === teacherId);
+  const getTeacherName = (reservation: any) => {
+    if (publicMode) return reservation?.teacher_name || "";
+    const p = profiles?.find((pr: any) => pr.user_id === reservation?.teacher_id);
     return p?.full_name || "";
   };
 
