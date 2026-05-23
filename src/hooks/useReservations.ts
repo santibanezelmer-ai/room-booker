@@ -23,13 +23,14 @@ export function useReservations(dateRange?: { from: string; to: string }) {
 }
 
 // Public hook: only approved reservations, no auth required.
+// Uses public_reservations view which exposes teacher_name (not teacher_id).
 export function usePublicReservations(dateRange?: { from: string; to: string }) {
   return useQuery({
     queryKey: ["public_reservations", dateRange],
     queryFn: async () => {
-      let query = supabase
-        .from("reservations")
-        .select("id, reservation_date, block_start, block_end, course_name, class_objective, observation, status, teacher_id, cancellation_reason");
+      let query = (supabase as any)
+        .from("public_reservations")
+        .select("id, reservation_date, block_start, block_end, course_name, class_objective, observation, status, cancellation_reason, teacher_name");
 
       if (dateRange) {
         query = query.gte("reservation_date", dateRange.from).lte("reservation_date", dateRange.to);
@@ -37,7 +38,7 @@ export function usePublicReservations(dateRange?: { from: string; to: string }) 
 
       const { data, error } = await query.order("reservation_date", { ascending: true });
       if (error) throw error;
-      return data;
+      return data as any[];
     },
   });
 }
