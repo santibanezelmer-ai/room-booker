@@ -270,6 +270,21 @@ export type Database = {
       }
     }
     Views: {
+      public_reservations: {
+        Row: {
+          block_end: number | null
+          block_start: number | null
+          cancellation_reason: string | null
+          class_objective: string | null
+          course_name: string | null
+          id: string | null
+          observation: string | null
+          reservation_date: string | null
+          status: string | null
+          teacher_name: string | null
+        }
+        Relationships: []
+      }
       public_teachers: {
         Row: {
           full_name: string | null
