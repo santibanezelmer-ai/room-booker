@@ -513,12 +513,18 @@ export default function AdminDashboard() {
             {Object.keys(pendingGroups).length > 0 && (
               <div className="space-y-2">
                 {Object.entries(pendingGroups).map(([groupId, items]) => (
-                  <Card key={groupId} className="border-primary/30 bg-primary/5">
-                    <CardContent className="p-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Repeat className="h-4 w-4 text-primary" />
-                        <span className="font-semibold text-foreground">{items[0].course_name}</span>
-                        <span className="text-muted-foreground">— {getTeacherShortName(items[0].teacher_id)} — {items.length} fechas pendientes</span>
+                  <Card key={groupId} className="border-primary/40 bg-primary/5 shadow-sm">
+                    <CardContent className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 text-sm min-w-0">
+                        <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                          <Repeat className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-foreground truncate">{items[0].course_name}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {getTeacherShortName(items[0].teacher_id)} · {items.length} fechas pendientes
+                          </div>
+                        </div>
                       </div>
                       <Button size="sm" onClick={() => handleApproveGroup(groupId)} disabled={approveGroup.isPending}>
                         <Check className="h-4 w-4 mr-1" /> Aprobar todas
@@ -535,48 +541,154 @@ export default function AdminDashboard() {
               <Card><CardContent className="py-12 text-center text-muted-foreground">No hay solicitudes que coincidan.</CardContent></Card>
             ) : (
               <div className="space-y-3">
+                {(() => {
+                  const pendingTotal = filteredReservations.filter(r => r.status === "pending").length;
+                  return pendingTotal > 0 && statusFilter !== "approved" && statusFilter !== "rejected" && statusFilter !== "cancelled_by_admin" ? (
+                    <div className="flex items-center justify-between px-1">
+                      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <span className="inline-block h-2 w-2 rounded-full bg-status-pending animate-pulse" />
+                        {pendingTotal} {pendingTotal === 1 ? "solicitud requiere" : "solicitudes requieren"} tu revisión
+                      </h3>
+                    </div>
+                  ) : null;
+                })()}
+
                 {filteredReservations.map(r => {
                   const status = STATUS_MAP[r.status] || STATUS_MAP.pending;
+                  const isPending = r.status === "pending";
+                  const teacherFull = getTeacherShortName(r.teacher_id) || "Sin nombre";
+                  const teacherEmail = (() => {
+                    const p = profiles?.find(p => p.user_id === r.teacher_id);
+                    return p?.email || "";
+                  })();
+                  const initials = teacherFull
+                    .split(" ")
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map(s => s[0]?.toUpperCase())
+                    .join("") || "?";
+                  const dateObj = new Date(r.reservation_date + "T12:00:00");
+                  const accent =
+                    r.status === "pending" ? "border-l-status-pending" :
+                    r.status === "approved" ? "border-l-status-approved" :
+                    r.status === "rejected" ? "border-l-status-rejected" :
+                    "border-l-muted-foreground/40";
                   return (
-                    <Card key={r.id} className="animate-fade-in">
+                    <Card
+                      key={r.id}
+                      className={`animate-fade-in border-l-4 ${accent} ${isPending ? "ring-1 ring-status-pending/20 shadow-sm" : ""}`}
+                    >
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
-                          <div className="space-y-1.5 flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <BookOpen className="h-4 w-4 text-primary shrink-0" />
-                              <span className="font-semibold text-foreground">{r.course_name}</span>
-                              <Badge className={status.className}>{status.label}</Badge>
-                              {r.recurrence_group_id && (
-                                <Badge variant="outline" className="text-[10px] gap-1"><Repeat className="h-3 w-3" />Recurrente</Badge>
-                              )}
+                        <div className="flex items-stretch gap-4">
+                          {/* Date block */}
+                          <div className="flex flex-col items-center justify-center rounded-lg bg-muted/40 px-3 py-2 shrink-0 min-w-[64px] border border-border">
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                              {format(dateObj, "EEE", { locale: es })}
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              <Clock className="h-3.5 w-3.5 inline mr-1" />
-                              {format(new Date(r.reservation_date + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })} — Bloque {r.block_start}{r.block_end > r.block_start ? ` a ${r.block_end}` : ""}
+                            <div className="text-2xl font-bold text-foreground leading-tight">
+                              {format(dateObj, "d")}
                             </div>
-                            <div className="text-sm text-muted-foreground">Docente: {getTeacherName(r.teacher_id)}</div>
-                            {r.class_objective && (
-                              <p className="text-sm text-foreground/80"><span className="font-medium">Objetivo:</span> {r.class_objective}</p>
-                            )}
-                            {r.observation && <p className="text-sm text-muted-foreground">Obs: {r.observation}</p>}
-                            {r.admin_notes && <p className="text-sm text-destructive">Nota admin: {r.admin_notes}</p>}
-                            {r.cancellation_reason && <p className="text-sm text-muted-foreground">Liberada: {r.cancellation_reason}</p>}
+                            <div className="text-[10px] uppercase text-muted-foreground">
+                              {format(dateObj, "MMM", { locale: es })}
+                            </div>
                           </div>
-                          <div className="flex gap-1.5 shrink-0">
-                            {r.status === "pending" && (
-                              <>
-                                <Button size="sm" variant="outline" className="text-status-available border-status-available hover:bg-status-available hover:text-status-available-foreground" onClick={() => handleApprove(r.id)}>
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="outline" className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => { setRejectId(r.id); setRejectDialog(true); }}>
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                            {r.status === "approved" && (
-                              <Button size="sm" variant="outline" onClick={() => { setReleaseId(r.id); setReleaseReason(""); setReleaseDialog(true); }} title="Liberar reserva">
-                                <Unlock className="h-4 w-4 mr-1" /> Liberar
-                              </Button>
+
+                          {/* Main content */}
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                                  <span className="font-semibold text-foreground truncate">{r.course_name}</span>
+                                  <Badge className={status.className}>{status.label}</Badge>
+                                  {r.recurrence_group_id && (
+                                    <Badge variant="outline" className="text-[10px] gap-1">
+                                      <Repeat className="h-3 w-3" />Recurrente
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  <span>
+                                    Bloque {r.block_start}{r.block_end > r.block_start ? `–${r.block_end}` : ""}
+                                  </span>
+                                  <span className="text-border">·</span>
+                                  <span className="capitalize">{format(dateObj, "EEEE", { locale: es })}</span>
+                                </div>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex gap-1.5 shrink-0">
+                                {isPending && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      className="bg-status-approved text-status-approved-foreground hover:bg-status-approved/90"
+                                      onClick={() => handleApprove(r.id)}
+                                    >
+                                      <Check className="h-4 w-4 mr-1" /> Aprobar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                      onClick={() => { setRejectId(r.id); setRejectDialog(true); }}
+                                    >
+                                      <X className="h-4 w-4 mr-1" /> Rechazar
+                                    </Button>
+                                  </>
+                                )}
+                                {r.status === "approved" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => { setReleaseId(r.id); setReleaseReason(""); setReleaseDialog(true); }}
+                                    title="Liberar reserva"
+                                  >
+                                    <Unlock className="h-4 w-4 mr-1" /> Liberar
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Teacher */}
+                            <div className="flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold shrink-0">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-foreground truncate">{teacherFull}</div>
+                                {teacherEmail && (
+                                  <div className="text-xs text-muted-foreground truncate">{teacherEmail}</div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Details */}
+                            {(r.class_objective || r.observation || r.admin_notes || r.cancellation_reason) && (
+                              <div className="rounded-md bg-muted/30 border border-border/50 p-2.5 space-y-1.5 text-sm">
+                                {r.class_objective && (
+                                  <p className="text-foreground/90">
+                                    <span className="font-medium text-foreground">Objetivo: </span>
+                                    {r.class_objective}
+                                  </p>
+                                )}
+                                {r.observation && (
+                                  <p className="text-muted-foreground">
+                                    <span className="font-medium">Observación: </span>{r.observation}
+                                  </p>
+                                )}
+                                {r.admin_notes && (
+                                  <p className="text-destructive">
+                                    <span className="font-medium">Nota admin: </span>{r.admin_notes}
+                                  </p>
+                                )}
+                                {r.cancellation_reason && (
+                                  <p className="text-muted-foreground">
+                                    <span className="font-medium">Motivo liberación: </span>{r.cancellation_reason}
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
