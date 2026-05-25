@@ -62,6 +62,7 @@ export default function MyReservations() {
   const { data: blocks } = useScheduleBlocks();
   const updateMine = useUpdateOwnReservation();
   const deleteMine = useDeleteOwnReservation();
+  const updateObjective = useUpdateReservationObjective();
   const { toast } = useToast();
 
   const [editing, setEditing] = useState<any>(null);
@@ -72,6 +73,10 @@ export default function MyReservations() {
   const [editObjective, setEditObjective] = useState("");
   const [editObs, setEditObs] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Objective-only edit (for approved reservations, esp. recurring)
+  const [objEditing, setObjEditing] = useState<any>(null);
+  const [objText, setObjText] = useState("");
 
   useEffect(() => {
     if (editing) {
