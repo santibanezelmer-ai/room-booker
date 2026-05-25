@@ -3,6 +3,7 @@ import {
   useReservations,
   useUpdateOwnReservation,
   useDeleteOwnReservation,
+  useUpdateReservationObjective,
 } from "@/hooks/useReservations";
 import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { Badge } from "@/components/ui/badge";
