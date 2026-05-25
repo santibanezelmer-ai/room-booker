@@ -211,3 +211,22 @@ export function useDeleteOwnReservation() {
     },
   });
 }
+
+// Teacher: edit only the class_objective of own reservation (pending or approved).
+// Useful for recurring reservations where each occurrence may have a different objective.
+export function useUpdateReservationObjective() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, objective }: { id: string; objective: string }) => {
+      const { error } = await (supabase as any).rpc("update_reservation_objective", {
+        p_id: id,
+        p_objective: objective,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["public_reservations"] });
+    },
+  });
+}

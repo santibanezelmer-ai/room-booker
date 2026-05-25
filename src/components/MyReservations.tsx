@@ -3,6 +3,7 @@ import {
   useReservations,
   useUpdateOwnReservation,
   useDeleteOwnReservation,
+  useUpdateReservationObjective,
 } from "@/hooks/useReservations";
 import { useScheduleBlocks } from "@/hooks/useScheduleBlocks";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,7 @@ export default function MyReservations() {
   const { data: blocks } = useScheduleBlocks();
   const updateMine = useUpdateOwnReservation();
   const deleteMine = useDeleteOwnReservation();
+  const updateObjective = useUpdateReservationObjective();
   const { toast } = useToast();
 
   const [editing, setEditing] = useState<any>(null);
@@ -71,6 +73,10 @@ export default function MyReservations() {
   const [editObjective, setEditObjective] = useState("");
   const [editObs, setEditObs] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Objective-only edit (for approved reservations, esp. recurring)
+  const [objEditing, setObjEditing] = useState<any>(null);
+  const [objText, setObjText] = useState("");
 
   useEffect(() => {
     if (editing) {
@@ -227,6 +233,20 @@ export default function MyReservations() {
                       </Button>
                     </div>
                   )}
+                  {r.status === "approved" && (
+                    <div className="shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1.5"
+                        onClick={() => { setObjEditing(r); setObjText(r.class_objective || ""); }}
+                        title="Editar objetivo de esta clase"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span className="text-xs">Objetivo</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -324,6 +344,65 @@ export default function MyReservations() {
               </Button>
               <Button type="submit" disabled={updateMine.isPending}>
                 {updateMine.isPending ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Objective-only edit (approved reservations) */}
+      <Dialog open={!!objEditing} onOpenChange={(o) => !o && setObjEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar objetivo de la clase</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!objText.trim()) {
+                toast({ title: "Objetivo requerido", variant: "destructive" });
+                return;
+              }
+              try {
+                await updateObjective.mutateAsync({ id: objEditing.id, objective: objText.trim() });
+                toast({ title: "Objetivo actualizado" });
+                setObjEditing(null);
+              } catch (err: any) {
+                toast({ title: "Error", description: err.message, variant: "destructive" });
+              }
+            }}
+            className="space-y-4"
+          >
+            {objEditing && (
+              <div className="text-sm text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
+                <div className="font-medium text-foreground">{objEditing.course_name}</div>
+                <div className="text-xs">
+                  {format(new Date(objEditing.reservation_date + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })}
+                  {" — "}Bloque {objEditing.block_start}
+                  {objEditing.block_end > objEditing.block_start ? ` a ${objEditing.block_end}` : ""}
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Objetivo de esta clase</Label>
+              <Textarea
+                value={objText}
+                onChange={(e) => setObjText(e.target.value)}
+                required
+                rows={4}
+                maxLength={500}
+                placeholder="Ej: Reconocer las partes del computador y su función"
+              />
+              <p className="text-xs text-muted-foreground">
+                Solo se actualizará el objetivo de esta fecha. Las demás ocurrencias no se verán afectadas.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setObjEditing(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={updateObjective.isPending}>
+                {updateObjective.isPending ? "Guardando..." : "Guardar objetivo"}
               </Button>
             </DialogFooter>
           </form>
