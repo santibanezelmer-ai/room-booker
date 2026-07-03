@@ -307,10 +307,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      update_reservation_objective: {
-        Args: { p_id: string; p_objective: string }
-        Returns: undefined
-      }
     }
     Enums: {
       app_role: "admin" | "teacher"

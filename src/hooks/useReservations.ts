@@ -218,10 +218,13 @@ export function useUpdateReservationObjective() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, objective }: { id: string; objective: string }) => {
-      const { error } = await (supabase as any).rpc("update_reservation_objective", {
-        p_id: id,
-        p_objective: objective,
-      });
+      const trimmed = (objective ?? "").trim();
+      if (!trimmed) throw new Error("Objective cannot be empty");
+      if (trimmed.length > 500) throw new Error("Objective too long (max 500)");
+      const { error } = await supabase
+        .from("reservations")
+        .update({ class_objective: trimmed })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
