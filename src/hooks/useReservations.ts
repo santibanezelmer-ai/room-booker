@@ -225,8 +225,14 @@ export function useUpdateOwnReservation() {
         observation: string | null;
       }>;
     }) => {
-      const { error } = await supabase.from("reservations").update(updates).eq("id", id);
-      if (error) throw error;
+      const { observation, ...rest } = updates;
+      if (Object.keys(rest).length > 0) {
+        const { error } = await supabase.from("reservations").update(rest).eq("id", id);
+        if (error) throw error;
+      }
+      if (observation !== undefined) {
+        await upsertNotes(id, { observation: observation || null });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
