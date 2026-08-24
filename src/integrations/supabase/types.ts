@@ -145,9 +145,47 @@ export type Database = {
         }
         Relationships: []
       }
-      reservations: {
+      reservation_notes: {
         Row: {
           admin_notes: string | null
+          created_at: string
+          observation: string | null
+          reservation_id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          observation?: string | null
+          reservation_id: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          observation?: string | null
+          reservation_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_notes_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "public_reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservation_notes_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservations: {
+        Row: {
           block_end: number
           block_start: number
           cancellation_reason: string | null
@@ -155,7 +193,6 @@ export type Database = {
           course_name: string
           created_at: string
           id: string
-          observation: string | null
           recurrence_group_id: string | null
           reservation_date: string
           status: string
@@ -163,7 +200,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          admin_notes?: string | null
           block_end: number
           block_start: number
           cancellation_reason?: string | null
@@ -171,7 +207,6 @@ export type Database = {
           course_name: string
           created_at?: string
           id?: string
-          observation?: string | null
           recurrence_group_id?: string | null
           reservation_date: string
           status?: string
@@ -179,7 +214,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          admin_notes?: string | null
           block_end?: number
           block_start?: number
           cancellation_reason?: string | null
@@ -187,7 +221,6 @@ export type Database = {
           course_name?: string
           created_at?: string
           id?: string
-          observation?: string | null
           recurrence_group_id?: string | null
           reservation_date?: string
           status?: string
