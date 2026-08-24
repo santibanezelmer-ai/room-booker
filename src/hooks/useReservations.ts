@@ -2,13 +2,36 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
+// Private notes (observation / admin_notes) live in reservation_notes and are only
+// readable by the owning teacher or an admin.
+function flattenNotes(rows: any[]): any[] {
+  return (rows || []).map((r: any) => {
+    const notes = Array.isArray(r.reservation_notes) ? r.reservation_notes[0] : r.reservation_notes;
+    const { reservation_notes, ...rest } = r;
+    return {
+      ...rest,
+      observation: notes?.observation ?? null,
+      admin_notes: notes?.admin_notes ?? null,
+    };
+  });
+}
+
+async function upsertNotes(reservationId: string, patch: { observation?: string | null; admin_notes?: string | null }) {
+  const { error } = await supabase
+    .from("reservation_notes")
+    .upsert({ reservation_id: reservationId, ...patch }, { onConflict: "reservation_id" });
+  if (error) throw error;
+}
+
 export function useReservations(dateRange?: { from: string; to: string }) {
   const { role, user } = useAuth();
 
   return useQuery({
     queryKey: ["reservations", role, user?.id, dateRange],
     queryFn: async () => {
-      let query = supabase.from("reservations").select("*");
+      let query = supabase
+        .from("reservations")
+        .select("*, reservation_notes(observation, admin_notes)");
 
       if (dateRange) {
         query = query.gte("reservation_date", dateRange.from).lte("reservation_date", dateRange.to);
@@ -16,7 +39,7 @@ export function useReservations(dateRange?: { from: string; to: string }) {
 
       const { data, error } = await query.order("reservation_date", { ascending: true });
       if (error) throw error;
-      return data;
+      return flattenNotes(data as any[]);
     },
     enabled: !!user,
   });
