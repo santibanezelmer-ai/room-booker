@@ -2,13 +2,36 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
+// Private notes (observation / admin_notes) live in reservation_notes and are only
+// readable by the owning teacher or an admin.
+function flattenNotes(rows: any[]): any[] {
+  return (rows || []).map((r: any) => {
+    const notes = Array.isArray(r.reservation_notes) ? r.reservation_notes[0] : r.reservation_notes;
+    const { reservation_notes, ...rest } = r;
+    return {
+      ...rest,
+      observation: notes?.observation ?? null,
+      admin_notes: notes?.admin_notes ?? null,
+    };
+  });
+}
+
+async function upsertNotes(reservationId: string, patch: { observation?: string | null; admin_notes?: string | null }) {
+  const { error } = await supabase
+    .from("reservation_notes")
+    .upsert({ reservation_id: reservationId, ...patch }, { onConflict: "reservation_id" });
+  if (error) throw error;
+}
+
 export function useReservations(dateRange?: { from: string; to: string }) {
   const { role, user } = useAuth();
 
   return useQuery({
     queryKey: ["reservations", role, user?.id, dateRange],
     queryFn: async () => {
-      let query = supabase.from("reservations").select("*");
+      let query = supabase
+        .from("reservations")
+        .select("*, reservation_notes(observation, admin_notes)");
 
       if (dateRange) {
         query = query.gte("reservation_date", dateRange.from).lte("reservation_date", dateRange.to);
@@ -16,7 +39,7 @@ export function useReservations(dateRange?: { from: string; to: string }) {
 
       const { data, error } = await query.order("reservation_date", { ascending: true });
       if (error) throw error;
-      return data;
+      return flattenNotes(data as any[]);
     },
     enabled: !!user,
   });
@@ -30,7 +53,7 @@ export function usePublicReservations(dateRange?: { from: string; to: string }) 
     queryFn: async () => {
       let query = (supabase as any)
         .from("public_reservations")
-        .select("id, reservation_date, block_start, block_end, course_name, class_objective, observation, status, cancellation_reason, teacher_name");
+        .select("id, reservation_date, block_start, block_end, course_name, class_objective, status, cancellation_reason, teacher_name");
 
       if (dateRange) {
         query = query.gte("reservation_date", dateRange.from).lte("reservation_date", dateRange.to);
@@ -57,12 +80,14 @@ export function useCreateReservation() {
       observation?: string;
       recurrence_group_id?: string | null;
     }) => {
+      const { observation, ...rest } = reservation;
       const { data, error } = await supabase
         .from("reservations")
-        .insert({ ...reservation, teacher_id: user!.id })
+        .insert({ ...rest, teacher_id: user!.id })
         .select()
         .single();
       if (error) throw error;
+      if (observation) await upsertNotes(data.id, { observation });
       return data;
     },
     onSuccess: () => {
@@ -92,11 +117,19 @@ export function useCreateRecurringReservations() {
         block_end: payload.block_end,
         course_name: payload.course_name,
         class_objective: payload.class_objective,
-        observation: payload.observation || null,
         recurrence_group_id: groupId,
       }));
       const { data, error } = await supabase.from("reservations").insert(rows).select();
       if (error) throw error;
+      if (payload.observation && data?.length) {
+        const { error: notesError } = await supabase
+          .from("reservation_notes")
+          .upsert(
+            data.map((r: any) => ({ reservation_id: r.id, observation: payload.observation })),
+            { onConflict: "reservation_id" }
+          );
+        if (notesError) throw notesError;
+      }
       return { groupId, data };
     },
     onSuccess: () => {
@@ -116,13 +149,16 @@ export function useUpdateReservationStatus() {
     }: {
       id: string;
       status: string;
-      admin_notes?: string;
+      admin_notes?: string | null;
     }) => {
       const { error } = await supabase
         .from("reservations")
-        .update({ status, admin_notes })
+        .update({ status })
         .eq("id", id);
       if (error) throw error;
+      if (admin_notes !== undefined) {
+        await upsertNotes(id, { admin_notes: admin_notes || null });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
@@ -189,8 +225,14 @@ export function useUpdateOwnReservation() {
         observation: string | null;
       }>;
     }) => {
-      const { error } = await supabase.from("reservations").update(updates).eq("id", id);
-      if (error) throw error;
+      const { observation, ...rest } = updates;
+      if (Object.keys(rest).length > 0) {
+        const { error } = await supabase.from("reservations").update(rest).eq("id", id);
+        if (error) throw error;
+      }
+      if (observation !== undefined) {
+        await upsertNotes(id, { observation: observation || null });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
