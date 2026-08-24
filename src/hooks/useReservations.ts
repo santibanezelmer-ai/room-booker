@@ -80,12 +80,14 @@ export function useCreateReservation() {
       observation?: string;
       recurrence_group_id?: string | null;
     }) => {
+      const { observation, ...rest } = reservation;
       const { data, error } = await supabase
         .from("reservations")
-        .insert({ ...reservation, teacher_id: user!.id })
+        .insert({ ...rest, teacher_id: user!.id })
         .select()
         .single();
       if (error) throw error;
+      if (observation) await upsertNotes(data.id, { observation });
       return data;
     },
     onSuccess: () => {
