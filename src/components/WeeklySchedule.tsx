@@ -59,7 +59,7 @@ export default function WeeklySchedule({ currentDate, onSlotClick, publicMode = 
   const getReservation = (date: string, blockNum: number) => {
     return reservations?.find(
       (r: any) => r.reservation_date === date && r.block_start <= blockNum && r.block_end >= blockNum
-        && r.status !== "cancelled_by_admin"
+        && r.status !== "cancelled_by_admin" && r.status !== "rejected"
     );
   };
 

@@ -298,7 +298,7 @@ export default function AdminDashboard() {
 
   const handleApprove = async (id: string) => {
     try {
-      await updateStatus.mutateAsync({ id, status: "approved" });
+      await updateStatus.mutateAsync({ id, status: "approved", admin_notes: null as any });
       toast({ title: "Reserva aprobada" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -637,6 +637,47 @@ export default function AdminDashboard() {
                                       <X className="h-4 w-4 mr-1" /> Rechazar
                                     </Button>
                                   </>
+                                )}
+                                {r.status === "rejected" && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      className="bg-status-approved text-status-approved-foreground hover:bg-status-approved/90"
+                                      onClick={() => handleApprove(r.id)}
+                                    >
+                                      <Check className="h-4 w-4 mr-1" /> Aprobar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={async () => {
+                                        try {
+                                          await updateStatus.mutateAsync({ id: r.id, status: "pending", admin_notes: null as any });
+                                          toast({ title: "Solicitud reabierta", description: "La reserva volvió a estado pendiente." });
+                                        } catch (err: any) {
+                                          toast({ title: "Error", description: err.message, variant: "destructive" });
+                                        }
+                                      }}
+                                    >
+                                      Reabrir
+                                    </Button>
+                                  </>
+                                )}
+                                {(r.status === "cancelled_by_admin") && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={async () => {
+                                      try {
+                                        await updateStatus.mutateAsync({ id: r.id, status: "pending", admin_notes: null as any });
+                                        toast({ title: "Solicitud reabierta" });
+                                      } catch (err: any) {
+                                        toast({ title: "Error", description: err.message, variant: "destructive" });
+                                      }
+                                    }}
+                                  >
+                                    Reabrir
+                                  </Button>
                                 )}
                                 {r.status === "approved" && (
                                   <Button
