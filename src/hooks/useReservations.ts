@@ -117,11 +117,19 @@ export function useCreateRecurringReservations() {
         block_end: payload.block_end,
         course_name: payload.course_name,
         class_objective: payload.class_objective,
-        observation: payload.observation || null,
         recurrence_group_id: groupId,
       }));
       const { data, error } = await supabase.from("reservations").insert(rows).select();
       if (error) throw error;
+      if (payload.observation && data?.length) {
+        const { error: notesError } = await supabase
+          .from("reservation_notes")
+          .upsert(
+            data.map((r: any) => ({ reservation_id: r.id, observation: payload.observation })),
+            { onConflict: "reservation_id" }
+          );
+        if (notesError) throw notesError;
+      }
       return { groupId, data };
     },
     onSuccess: () => {
