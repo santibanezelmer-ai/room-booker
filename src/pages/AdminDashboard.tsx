@@ -298,7 +298,7 @@ export default function AdminDashboard() {
 
   const handleApprove = async (id: string) => {
     try {
-      await updateStatus.mutateAsync({ id, status: "approved" });
+      await updateStatus.mutateAsync({ id, status: "approved", admin_notes: null as any });
       toast({ title: "Reserva aprobada" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
