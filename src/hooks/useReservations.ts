@@ -149,13 +149,16 @@ export function useUpdateReservationStatus() {
     }: {
       id: string;
       status: string;
-      admin_notes?: string;
+      admin_notes?: string | null;
     }) => {
       const { error } = await supabase
         .from("reservations")
-        .update({ status, admin_notes })
+        .update({ status })
         .eq("id", id);
       if (error) throw error;
+      if (admin_notes !== undefined) {
+        await upsertNotes(id, { admin_notes: admin_notes || null });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
