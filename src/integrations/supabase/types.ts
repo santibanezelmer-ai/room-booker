@@ -118,6 +118,72 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          recipient_email: string
+          recurrence_group_id: string | null
+          reservation_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          recipient_email: string
+          recurrence_group_id?: string | null
+          reservation_id?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          recipient_email?: string
+          recurrence_group_id?: string | null
+          reservation_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          admin_emails: string[]
+          created_at: string
+          id: string
+          notify_approved: boolean
+          notify_new_request: boolean
+          notify_rejected: boolean
+          notify_released: boolean
+          updated_at: string
+        }
+        Insert: {
+          admin_emails?: string[]
+          created_at?: string
+          id?: string
+          notify_approved?: boolean
+          notify_new_request?: boolean
+          notify_rejected?: boolean
+          notify_released?: boolean
+          updated_at?: string
+        }
+        Update: {
+          admin_emails?: string[]
+          created_at?: string
+          id?: string
+          notify_approved?: boolean
+          notify_new_request?: boolean
+          notify_rejected?: boolean
+          notify_released?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
