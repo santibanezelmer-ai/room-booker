@@ -211,7 +211,9 @@ export function useReleaseReservation() {
         })
         .eq("id", id);
       if (error) throw error;
+      void notifyReservationEmail(id, "released");
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
       queryClient.invalidateQueries({ queryKey: ["public_reservations"] });
