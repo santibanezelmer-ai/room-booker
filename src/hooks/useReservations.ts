@@ -90,7 +90,9 @@ export function useCreateReservation() {
         .single();
       if (error) throw error;
       if (observation) await upsertNotes(data.id, { observation });
+      void notifyReservationEmail(data.id, "new_request");
       return data;
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
