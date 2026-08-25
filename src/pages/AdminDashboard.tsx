@@ -33,6 +33,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import ThemeToggle from "@/components/ThemeToggle";
 import { exportMonthlyCalendarPdf } from "@/lib/exportMonthPdf";
+import NotificationSettingsPanel from "@/components/NotificationSettingsPanel";
+
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "bg-status-pending text-status-pending-foreground" },
