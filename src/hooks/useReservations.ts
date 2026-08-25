@@ -166,6 +166,8 @@ export function useUpdateReservationStatus() {
       if (admin_notes !== undefined) {
         await upsertNotes(id, { admin_notes: admin_notes || null });
       }
+      if (status === "approved") void notifyReservationEmail(id, "approved");
+      if (status === "rejected") void notifyReservationEmail(id, "rejected");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
@@ -179,13 +181,16 @@ export function useApproveRecurrenceGroup() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (groupId: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("reservations")
         .update({ status: "approved" })
         .eq("recurrence_group_id", groupId)
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .select("id");
       if (error) throw error;
+      if (data?.length) void notifyReservationEmail(data[0].id, "approved");
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
       queryClient.invalidateQueries({ queryKey: ["public_reservations"] });
