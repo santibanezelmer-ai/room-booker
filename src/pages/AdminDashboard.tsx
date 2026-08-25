@@ -33,6 +33,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import ThemeToggle from "@/components/ThemeToggle";
 import { exportMonthlyCalendarPdf } from "@/lib/exportMonthPdf";
+import NotificationSettingsPanel from "@/components/NotificationSettingsPanel";
+
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "bg-status-pending text-status-pending-foreground" },
@@ -475,6 +477,8 @@ export default function AdminDashboard() {
             <TabsTrigger value="materials"><Package className="h-4 w-4 mr-1.5" />Materiales</TabsTrigger>
             <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Usuarios</TabsTrigger>
             <TabsTrigger value="blocks"><LayoutGrid className="h-4 w-4 mr-1.5" />Bloques</TabsTrigger>
+            <TabsTrigger value="notifications"><Mail className="h-4 w-4 mr-1.5" />Notificaciones</TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
@@ -1060,7 +1064,12 @@ export default function AdminDashboard() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="notifications" className="space-y-4">
+            <NotificationSettingsPanel />
+          </TabsContent>
         </Tabs>
+
       </main>
 
       {/* Reject dialog */}
