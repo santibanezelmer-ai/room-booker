@@ -134,7 +134,10 @@ export function useCreateRecurringReservations() {
           );
         if (notesError) throw notesError;
       }
+      // One summary notification per recurring series (first occurrence).
+      if (data?.length) void notifyReservationEmail(data[0].id, "new_request");
       return { groupId, data };
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
