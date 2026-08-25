@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { notifyReservationEmail } from "@/hooks/useNotificationSettings";
+
 
 // Private notes (observation / admin_notes) live in reservation_notes and are only
 // readable by the owning teacher or an admin.
