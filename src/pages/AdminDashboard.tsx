@@ -1062,7 +1062,12 @@ export default function AdminDashboard() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="notifications" className="space-y-4">
+            <NotificationSettingsPanel />
+          </TabsContent>
         </Tabs>
+
       </main>
 
       {/* Reject dialog */}
