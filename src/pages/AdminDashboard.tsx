@@ -343,6 +343,20 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteReservation = async (r: any) => {
+    const teacher = getTeacherShortName(r.teacher_id) || "docente";
+    if (!confirm(`¿Eliminar definitivamente la solicitud de "${r.course_name}" (${teacher}) del ${r.reservation_date}?\n\nEsta acción no se puede deshacer.`)) return;
+    try {
+      const { error } = await supabase.from("reservations").delete().eq("id", r.id);
+      if (error) throw error;
+      toast({ title: "Solicitud eliminada" });
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["public_reservations"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
   // Month view data
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
@@ -693,6 +707,15 @@ export default function AdminDashboard() {
                                     <Unlock className="h-4 w-4 mr-1" /> Liberar
                                   </Button>
                                 )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={() => handleDeleteReservation(r)}
+                                  title="Eliminar solicitud"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
                             </div>
 
