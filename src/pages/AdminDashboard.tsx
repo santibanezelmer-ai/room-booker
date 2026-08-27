@@ -124,6 +124,14 @@ export default function AdminDashboard() {
   // Manual reservation dialog (admin)
   const [newReservationDialog, setNewReservationDialog] = useState(false);
 
+  // Assign / change teacher dialog
+  const [assignDialog, setAssignDialog] = useState(false);
+  const [assignReservation, setAssignReservation] = useState<any>(null);
+  const [assignTeacherId, setAssignTeacherId] = useState("");
+  const [assignSaving, setAssignSaving] = useState(false);
+
+
+
 
   // Reservations
   const { data: reservations, isLoading } = useReservations();
