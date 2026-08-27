@@ -34,6 +34,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import ThemeToggle from "@/components/ThemeToggle";
 import { exportMonthlyCalendarPdf } from "@/lib/exportMonthPdf";
 import NotificationSettingsPanel from "@/components/NotificationSettingsPanel";
+import AdminReservationForm from "@/components/AdminReservationForm";
 
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -119,6 +120,10 @@ export default function AdminDashboard() {
   const [exportPdfDialog, setExportPdfDialog] = useState(false);
   const [exportMonth, setExportMonth] = useState((new Date().getMonth() + 1).toString());
   const [exportYear, setExportYear] = useState(new Date().getFullYear().toString());
+
+  // Manual reservation dialog (admin)
+  const [newReservationDialog, setNewReservationDialog] = useState(false);
+
 
   // Reservations
   const { data: reservations, isLoading } = useReservations();
@@ -524,8 +529,14 @@ export default function AdminDashboard() {
                     </SelectContent>
                   </Select>
                 </div>
+                <Button onClick={() => setNewReservationDialog(true)} className="ml-auto">
+                  <Plus className="h-4 w-4 mr-1.5" />Nueva reserva
+                </Button>
               </CardContent>
             </Card>
+
+            <AdminReservationForm open={newReservationDialog} onOpenChange={setNewReservationDialog} />
+
 
             {/* Pending recurrence groups: batch approve */}
             {Object.keys(pendingGroups).length > 0 && (
