@@ -124,6 +124,14 @@ export default function AdminDashboard() {
   // Manual reservation dialog (admin)
   const [newReservationDialog, setNewReservationDialog] = useState(false);
 
+  // Assign / change teacher dialog
+  const [assignDialog, setAssignDialog] = useState(false);
+  const [assignReservation, setAssignReservation] = useState<any>(null);
+  const [assignTeacherId, setAssignTeacherId] = useState("");
+  const [assignSaving, setAssignSaving] = useState(false);
+
+
+
 
   // Reservations
   const { data: reservations, isLoading } = useReservations();
@@ -362,6 +370,36 @@ export default function AdminDashboard() {
     }
   };
 
+  const openAssignDialog = (r: any) => {
+    setAssignReservation(r);
+    setAssignTeacherId(r.teacher_id || "");
+    setAssignDialog(true);
+  };
+
+  const handleAssignTeacher = async (applyGroup: boolean) => {
+    if (!assignReservation || !assignTeacherId) return;
+    setAssignSaving(true);
+    try {
+      let query = supabase.from("reservations").update({ teacher_id: assignTeacherId });
+      query = applyGroup && assignReservation.recurrence_group_id
+        ? query.eq("recurrence_group_id", assignReservation.recurrence_group_id)
+        : query.eq("id", assignReservation.id);
+      const { error } = await query;
+      if (error) throw error;
+      toast({ title: "Docente asignado", description: applyGroup ? "Se actualizó toda la serie." : "Se actualizó la reserva." });
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["public_reservations"] });
+      setAssignDialog(false);
+      setAssignReservation(null);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
+
+
   // Month view data
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
@@ -536,6 +574,45 @@ export default function AdminDashboard() {
             </Card>
 
             <AdminReservationForm open={newReservationDialog} onOpenChange={setNewReservationDialog} />
+
+            <Dialog open={assignDialog} onOpenChange={setAssignDialog}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Asignar docente</DialogTitle>
+                </DialogHeader>
+                {assignReservation && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      {assignReservation.course_name} · {assignReservation.reservation_date} · Bloques {assignReservation.block_start}–{assignReservation.block_end}
+                    </p>
+                    <div className="space-y-2">
+                      <Label>Docente</Label>
+                      <Select value={assignTeacherId} onValueChange={setAssignTeacherId}>
+                        <SelectTrigger><SelectValue placeholder="Selecciona un docente" /></SelectTrigger>
+                        <SelectContent>
+                          {profiles?.map((p: any) => (
+                            <SelectItem key={p.user_id} value={p.user_id}>
+                              {p.full_name} — {p.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter className="gap-2">
+                  {assignReservation?.recurrence_group_id && (
+                    <Button variant="outline" disabled={assignSaving || !assignTeacherId} onClick={() => handleAssignTeacher(true)}>
+                      Aplicar a toda la serie
+                    </Button>
+                  )}
+                  <Button disabled={assignSaving || !assignTeacherId} onClick={() => handleAssignTeacher(false)}>
+                    {assignSaving ? "Guardando..." : "Guardar"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
 
 
             {/* Pending recurrence groups: batch approve */}
@@ -719,6 +796,15 @@ export default function AdminDashboard() {
                                   </Button>
                                 )}
                                 <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openAssignDialog(r)}
+                                  title="Asignar o cambiar docente"
+                                >
+                                  <Users className="h-4 w-4 mr-1" /> Docente
+                                </Button>
+                                <Button
+
                                   size="sm"
                                   variant="ghost"
                                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
