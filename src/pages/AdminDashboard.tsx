@@ -758,6 +758,15 @@ export default function AdminDashboard() {
                                 )}
                                 <Button
                                   size="sm"
+                                  variant="outline"
+                                  onClick={() => openAssignDialog(r)}
+                                  title="Asignar o cambiar docente"
+                                >
+                                  <Users className="h-4 w-4 mr-1" /> Docente
+                                </Button>
+                                <Button
+
+                                  size="sm"
                                   variant="ghost"
                                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                   onClick={() => handleDeleteReservation(r)}
