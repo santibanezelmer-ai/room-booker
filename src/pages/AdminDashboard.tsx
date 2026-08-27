@@ -34,6 +34,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import ThemeToggle from "@/components/ThemeToggle";
 import { exportMonthlyCalendarPdf } from "@/lib/exportMonthPdf";
 import NotificationSettingsPanel from "@/components/NotificationSettingsPanel";
+import AdminReservationForm from "@/components/AdminReservationForm";
 
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
