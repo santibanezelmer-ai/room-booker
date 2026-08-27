@@ -529,8 +529,14 @@ export default function AdminDashboard() {
                     </SelectContent>
                   </Select>
                 </div>
+                <Button onClick={() => setNewReservationDialog(true)} className="ml-auto">
+                  <Plus className="h-4 w-4 mr-1.5" />Nueva reserva
+                </Button>
               </CardContent>
             </Card>
+
+            <AdminReservationForm open={newReservationDialog} onOpenChange={setNewReservationDialog} />
+
 
             {/* Pending recurrence groups: batch approve */}
             {Object.keys(pendingGroups).length > 0 && (
