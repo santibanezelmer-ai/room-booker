@@ -370,6 +370,36 @@ export default function AdminDashboard() {
     }
   };
 
+  const openAssignDialog = (r: any) => {
+    setAssignReservation(r);
+    setAssignTeacherId(r.teacher_id || "");
+    setAssignDialog(true);
+  };
+
+  const handleAssignTeacher = async (applyGroup: boolean) => {
+    if (!assignReservation || !assignTeacherId) return;
+    setAssignSaving(true);
+    try {
+      let query = supabase.from("reservations").update({ teacher_id: assignTeacherId });
+      query = applyGroup && assignReservation.recurrence_group_id
+        ? query.eq("recurrence_group_id", assignReservation.recurrence_group_id)
+        : query.eq("id", assignReservation.id);
+      const { error } = await query;
+      if (error) throw error;
+      toast({ title: "Docente asignado", description: applyGroup ? "Se actualizó toda la serie." : "Se actualizó la reserva." });
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["public_reservations"] });
+      setAssignDialog(false);
+      setAssignReservation(null);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
+
+
   // Month view data
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
