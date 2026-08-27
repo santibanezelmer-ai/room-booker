@@ -575,6 +575,45 @@ export default function AdminDashboard() {
 
             <AdminReservationForm open={newReservationDialog} onOpenChange={setNewReservationDialog} />
 
+            <Dialog open={assignDialog} onOpenChange={setAssignDialog}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Asignar docente</DialogTitle>
+                </DialogHeader>
+                {assignReservation && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      {assignReservation.course_name} · {assignReservation.reservation_date} · Bloques {assignReservation.block_start}–{assignReservation.block_end}
+                    </p>
+                    <div className="space-y-2">
+                      <Label>Docente</Label>
+                      <Select value={assignTeacherId} onValueChange={setAssignTeacherId}>
+                        <SelectTrigger><SelectValue placeholder="Selecciona un docente" /></SelectTrigger>
+                        <SelectContent>
+                          {profiles?.map((p: any) => (
+                            <SelectItem key={p.user_id} value={p.user_id}>
+                              {p.full_name} — {p.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter className="gap-2">
+                  {assignReservation?.recurrence_group_id && (
+                    <Button variant="outline" disabled={assignSaving || !assignTeacherId} onClick={() => handleAssignTeacher(true)}>
+                      Aplicar a toda la serie
+                    </Button>
+                  )}
+                  <Button disabled={assignSaving || !assignTeacherId} onClick={() => handleAssignTeacher(false)}>
+                    {assignSaving ? "Guardando..." : "Guardar"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+
 
             {/* Pending recurrence groups: batch approve */}
             {Object.keys(pendingGroups).length > 0 && (
