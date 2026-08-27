@@ -121,6 +121,10 @@ export default function AdminDashboard() {
   const [exportMonth, setExportMonth] = useState((new Date().getMonth() + 1).toString());
   const [exportYear, setExportYear] = useState(new Date().getFullYear().toString());
 
+  // Manual reservation dialog (admin)
+  const [newReservationDialog, setNewReservationDialog] = useState(false);
+
+
   // Reservations
   const { data: reservations, isLoading } = useReservations();
   const updateStatus = useUpdateReservationStatus();
